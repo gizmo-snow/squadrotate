@@ -179,30 +179,21 @@
 </header>
 
 <nav>
-  <button class="active" onclick="showView('gameday',event)">Game Day</button>
-  <button onclick="showView('roster',event)">Roster</button>
+  <button class="active" onclick="showView('roster',event)">Roster</button>
   <button onclick="showView('practice',event)">Practice</button>
+  <button onclick="showView('gameday',event)">Game Day</button>
 </nav>
 
-<!-- GAME DAY VIEW -->
-<div id="view-gameday" class="view active">
-  <div class="absent-panel">
-    <h3>Mark Absent (tap to toggle)</h3>
-    <div class="absent-chips" id="absentChips"></div>
-  </div>
-  <div class="action-bar">
-    <button class="btn btn-primary" onclick="autoAssign()">⚡ Auto-Assign All</button>
-    <button class="btn btn-secondary" onclick="clearAllShifts()">Clear</button>
-  </div>
-  <div class="shifts-container" id="shiftsContainer"></div>
-  <div class="stats-panel">
-    <h3>Player Rotation Tracker</h3>
-    <table class="stats-table" id="statsTable"></table>
-  </div>
-</div>
-
 <!-- ROSTER VIEW -->
-<div id="view-roster" class="view">
+<div id="view-roster" class="view active">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div>
+      <div style="font-size:0.65rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Team Name</div>
+      <input id="teamNameInput" type="text" maxlength="40"
+        style="background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text);font-size:1rem;font-weight:700;outline:none;width:220px;"
+        oninput="saveTeamName(this.value)">
+    </div>
+  </div>
   <div class="roster-grid" id="rosterGrid"></div>
   <button class="add-player-btn" onclick="openAddPlayer()">+ Add Player</button>
 </div>
@@ -223,6 +214,24 @@
   </div>
   <div id="weeklyAgenda"></div>
 </div>
+
+<!-- GAME DAY VIEW -->
+<div id="view-gameday" class="view">
+  <div class="absent-panel">
+    <h3>Mark Absent (tap to toggle)</h3>
+    <div class="absent-chips" id="absentChips"></div>
+  </div>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="autoAssign()">⚡ Auto-Assign All</button>
+    <button class="btn btn-secondary" onclick="clearAllShifts()">Clear</button>
+  </div>
+  <div class="shifts-container" id="shiftsContainer"></div>
+  <div class="stats-panel">
+    <h3>Player Rotation Tracker</h3>
+    <table class="stats-table" id="statsTable"></table>
+  </div>
+</div>
+
 
 <!-- ADD/EDIT PLAYER MODAL -->
 <div class="modal-overlay" id="addPlayerModal">
@@ -246,6 +255,11 @@
         <label><input type="checkbox" value="Midfield"> MID</label>
         <label><input type="checkbox" value="Striker"> STR</label>
       </div>
+    </div>
+    <div class="field-group">
+      <label>Notes</label>
+      <textarea id="mpNotes" rows="3" placeholder="Progress, development notes, key observations..."
+        style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:0.82rem;resize:vertical;font-family:inherit;"></textarea>
     </div>
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="savePlayer()">Save</button>
@@ -396,6 +410,7 @@ function getTeamState(teamKey) {
     shifts: Array.from({length: NUM_SHIFTS}, () => ({})),
     absent: [],
     gameLabel: '',
+    teamName: def.label,
     nextId: def.defaultPlayers.length + 1,
   };
 }
@@ -417,9 +432,23 @@ function switchTeam(teamKey) {
 }
 
 function updateTeamUI() {
+  const u78Name  = getTeamState('u78').teamName  || TEAMS.u78.label;
+  const u912Name = getTeamState('u912').teamName || TEAMS.u912.label;
+  document.getElementById('btnU78').textContent  = u78Name;
+  document.getElementById('btnU912').textContent = u912Name;
   document.getElementById('btnU78').className  = 'team-btn' + (currentTeam === 'u78'  ? ' active-u78'  : '');
   document.getElementById('btnU912').className = 'team-btn' + (currentTeam === 'u912' ? ' active-u912' : '');
   document.getElementById('gameLabel').value = state.gameLabel || '';
+  const nameInput = document.getElementById('teamNameInput');
+  if (nameInput) nameInput.value = state.teamName || TEAMS[currentTeam].label;
+}
+
+function saveTeamName(val) {
+  state.teamName = val;
+  saveTeamState(currentTeam, state);
+  // Update the switcher button live
+  const btnId = currentTeam === 'u78' ? 'btnU78' : 'btnU912';
+  document.getElementById(btnId).textContent = val || TEAMS[currentTeam].label;
 }
 
 // ─── RENDER ──────────────────────────────────────────────────────────────────
@@ -550,6 +579,7 @@ function renderRoster() {
       </div>
       <div class="player-meta">${p.experience}${p.kit?' · #'+p.kit:''}</div>
       <div class="pos-chips">${p.positions.map(pos=>`<span class="pos-chip ${POS_CLASS[pos]||''}">${ROLE_ABBR[pos]||pos}</span>`).join('')}</div>
+      ${p.notes ? `<div style="margin-top:6px;font-size:0.7rem;color:var(--text2);line-height:1.4;border-top:1px solid var(--border);padding-top:5px;">${p.notes.length>80?p.notes.slice(0,80)+'…':p.notes}</div>` : ''}
     </div>`).join('');
 }
 
@@ -670,6 +700,7 @@ function openAddPlayer() {
   document.getElementById('mpName').value = '';
   document.getElementById('mpPower').value = '2';
   document.getElementById('mpKit').value = '';
+  document.getElementById('mpNotes').value = '';
   document.querySelectorAll('#addPlayerModal input[type=checkbox]').forEach(cb => cb.checked = false);
   document.getElementById('modalDeleteBtn').style.display = 'none';
   document.getElementById('addPlayerModal').classList.add('open');
@@ -683,6 +714,7 @@ function openEditPlayer(id) {
   document.getElementById('mpName').value = p.name;
   document.getElementById('mpPower').value = p.power;
   document.getElementById('mpKit').value = p.kit||'';
+  document.getElementById('mpNotes').value = p.notes||'';
   document.querySelectorAll('#addPlayerModal input[type=checkbox]').forEach(cb => cb.checked = p.positions.includes(cb.value));
   document.getElementById('modalDeleteBtn').style.display = 'block';
   document.getElementById('addPlayerModal').classList.add('open');
@@ -695,12 +727,13 @@ function savePlayer() {
   const kit = document.getElementById('mpKit').value.trim();
   const positions = [...document.querySelectorAll('#addPlayerModal input[type=checkbox]:checked')].map(cb => cb.value);
   if (!positions.length) { showToast('Select at least one position'); return; }
+  const notes = document.getElementById('mpNotes').value.trim();
   const expMap = {1:'Little experience',2:'Some experience',3:'Very experienced'};
   if (editingPlayerId) {
-    Object.assign(state.players.find(x => x.id === editingPlayerId), {name, power, kit, positions, experience:expMap[power]});
+    Object.assign(state.players.find(x => x.id === editingPlayerId), {name, power, kit, notes, positions, experience:expMap[power]});
     showToast('Player updated');
   } else {
-    state.players.push({id:state.nextId++, name, power, kit, positions, experience:expMap[power]});
+    state.players.push({id:state.nextId++, name, power, kit, notes, positions, experience:expMap[power]});
     showToast('Player added');
   }
   saveTeamState(currentTeam, state);
