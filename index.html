@@ -567,6 +567,8 @@ function getTeamState(teamKey) {
       // Migrate: add formation and teamSize (issue #12)
       if (!parsed.formation) parsed.formation = { ...FORMATION_DEFAULT };
       if (!parsed.teamSize)  parsed.teamSize  = 7;
+      // Migrate: add nextId if missing (prevents NaN ids on new players)
+      if (!parsed.nextId) parsed.nextId = (parsed.players ? Math.max(...parsed.players.map(p => p.id || 0), 0) + 1 : 1);
       return parsed;
     }
   } catch(e) {}
