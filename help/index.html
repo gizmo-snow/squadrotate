@@ -77,6 +77,7 @@
   .chip-bench { background: rgba(100,116,139,0.2); color: var(--bench); }
   .chip-green { background: rgba(34,197,94,0.15); color: var(--green); }
   .chip-red   { background: rgba(239,68,68,0.15); color: var(--red); }
+  .chip-yellow { background: rgba(234,179,8,0.15); color: var(--yellow); }
 
   /* TRAFFIC LIGHT DEMO */
   .tl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 0.84rem; }
@@ -106,6 +107,23 @@
   .power-2 { background: rgba(245,158,11,0.2); color: var(--yellow); border: 1px solid var(--yellow); }
   .power-3 { background: rgba(34,197,94,0.2);  color: var(--green);  border: 1px solid var(--green); }
 
+  /* SHIFT DIFF DEMO */
+  .diff-demo { background: var(--surface); border-radius: 8px; padding: 10px 13px; margin: 10px 0; border: 1px solid var(--border); font-size: 0.82rem; display: flex; flex-direction: column; gap: 5px; }
+  .diff-row { display: flex; gap: 6px; align-items: center; }
+  .diff-tag { padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+  .diff-off  { background: rgba(239,68,68,0.15);  color: var(--red); }
+  .diff-on   { background: rgba(34,197,94,0.15);  color: var(--green); }
+  .diff-move { background: rgba(245,158,11,0.15); color: var(--yellow); }
+
+  /* CHALKBOARD DEMO */
+  .chalk-demo { background: #166534; border-radius: 10px; border: 2px solid #14532d; padding: 10px; margin: 10px 0; font-size: 0.75rem; }
+  .chalk-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 6px; }
+  .chalk-chip { background: rgba(255,255,255,0.15); color: #fff; border-radius: 12px; padding: 3px 10px; font-size: 0.72rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.25); }
+  .chalk-gk  { background: rgba(168,85,247,0.7); }
+  .chalk-def { background: rgba(59,130,246,0.5); }
+  .chalk-mid { background: rgba(245,158,11,0.5); }
+  .chalk-str { background: rgba(239,68,68,0.5); }
+
   /* FOOTER */
   footer { text-align: center; padding: 24px 14px; font-size: 0.75rem; color: var(--text2); border-top: 1px solid var(--border); }
   footer a { color: var(--green); text-decoration: none; }
@@ -115,7 +133,7 @@
 
 <header>
   <div class="logo">SquadRotate <span>/ Help</span></div>
-  <a class="back-link" href="../">← Back to App</a>
+  <a class="back-link" href="../">&#8592; Back to App</a>
 </header>
 
 <div class="page">
@@ -125,7 +143,7 @@
     <h2>On this page</h2>
     <ol>
       <li><a href="#getting-started">Getting Started</a></li>
-      <li><a href="#roster">Managing Your Roster</a></li>
+      <li><a href="#roster">Team Info &amp; Roster</a></li>
       <li><a href="#practice">Practice Schedule</a></li>
       <li><a href="#game-day">Game Day</a></li>
       <li><a href="#stats">Statistics &amp; Tracking</a></li>
@@ -144,32 +162,48 @@
 
     <div class="subsection">
       <h3>Switching teams</h3>
-      <p>SquadRotate supports two independent team slots — one for U7–U8 and one for U9–U12. Use the buttons at the top of the page to switch between them. Each team has its own roster, practice schedule, and game day state, stored separately.</p>
-      <p>Team names can be edited directly from the Roster tab. Tap the name to change it — it updates everywhere, including the switcher buttons.</p>
+      <p>SquadRotate supports two independent team slots — one for U7&#8211;U8 and one for U9&#8211;U12. Use the buttons at the top of the page to switch between them. Each team has its own roster, formation, practice schedule, and game history, stored separately.</p>
+      <p>Team names can be edited directly from the Team Info tab. Tap the name to change it — it updates everywhere, including the switcher buttons.</p>
     </div>
 
     <div class="subsection">
       <h3>Tab order</h3>
       <p>The three tabs follow the natural coaching workflow:</p>
       <ul>
-        <li><strong>Roster</strong> — build and maintain your player list</li>
-        <li><strong>Practice</strong> — plan your weekly sessions</li>
-        <li><strong>Game Day</strong> — run your in-game rotation</li>
+        <li><strong>Team Info</strong> — build your roster and configure your formation</li>
+        <li><strong>Practice</strong> — plan your weekly sessions and track coach availability</li>
+        <li><strong>Game Day</strong> — run your in-game rotation across multiple saved sessions</li>
       </ul>
     </div>
   </div>
 
 
-  <!-- 2. ROSTER -->
+  <!-- 2. ROSTER / TEAM INFO -->
   <div class="section" id="roster">
     <div class="section-header">
       <span class="section-icon">&#128101;</span>
-      <h2>Managing Your Roster</h2>
+      <h2>Team Info &amp; Roster</h2>
+    </div>
+
+    <div class="subsection">
+      <h3>Formation selector</h3>
+      <p>At the top of the Team Info tab is the <strong>Formation</strong> panel. Set how many players you want in each position for a typical field shift:</p>
+      <ul>
+        <li><span class="chip chip-gk">GK</span> — goalkeepers (almost always 1)</li>
+        <li><span class="chip chip-def">DEF</span> — defenders</li>
+        <li><span class="chip chip-mid">MID</span> — midfielders</li>
+        <li><span class="chip chip-str">STR</span> — strikers</li>
+      </ul>
+      <p>The counts must add up to your team size (the number of players on the field at once). SquadRotate shows a running total and highlights in red if the sum is off. The auto-assign algorithm and shift validation both use these formation numbers — change them here before running auto-assign if your league uses a different shape.</p>
+      <div class="callout tip">
+        <span class="callout-icon">&#128161;</span>
+        <div class="callout-body"><p>The default formation is 1 GK / 3 DEF / 1 MID / 2 STR (3-1-2 for 7v7). For 9v9 you might use 1 GK / 3 DEF / 2 MID / 2 STR instead.</p></div>
+      </div>
     </div>
 
     <div class="subsection">
       <h3>Adding a player</h3>
-      <p>Tap <strong>+ Add Player</strong> at the bottom of the Roster tab. Fill in:</p>
+      <p>Tap <strong>+ Add Player</strong> at the bottom of the Team Info tab. Fill in:</p>
       <ul>
         <li><strong>Name</strong> — how they'll appear on shift cards</li>
         <li><strong>Kit number</strong> — displayed on their roster card</li>
@@ -214,18 +248,28 @@
     <div class="subsection">
       <h3>Reading the weekly agenda</h3>
       <p>The Practice tab shows weekly agenda cards — one per session. Each card lists the date, the overall strategy/objective for that session, and the drill assigned to each coach's station.</p>
-      <p>U7–U8 teams have three coach stations; U9–U12 teams have two.</p>
+      <p>U7&#8211;U8 teams have three coach stations; U9&#8211;U12 teams have two.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Coach availability</h3>
+      <p>Each week card shows a row of coach name chips at the top. Tap any chip to toggle that coach's availability for the week:</p>
+      <ul>
+        <li><span class="chip chip-green">&#10003; Alex</span> — coach is present (green); their station drill shows normally</li>
+        <li><span class="chip chip-red">&#10007; Alex</span> — coach is unavailable (red); their station row is dimmed and marked <em>Unavailable</em></li>
+      </ul>
+      <p>Availability is saved per week, so you can pre-mark coaches as absent before practice day and have the plan reflect the real situation at the field.</p>
     </div>
 
     <div class="subsection">
       <h3>Editing a week</h3>
-      <p>Tap the <strong>Edit</strong> button on any week card to update its date, strategy, and station drills. Coach names are fixed labels in the form — to adjust coach availability, see the planned Coach Availability feature.</p>
+      <p>Tap the <strong>Edit</strong> button on any week card to update its date, strategy, and station drills. Tap Save when done.</p>
     </div>
 
     <div class="subsection">
       <h3>Adding and removing weeks</h3>
       <p>Use <strong>+ Add Week</strong> at the top of the Practice tab to create a new entry. Tap Edit on any week and use the Delete button (with confirmation) to remove it.</p>
-      <p>All changes persist automatically — no Save button needed after initial edit confirmation.</p>
+      <p>All changes persist automatically in your browser's local storage.</p>
     </div>
   </div>
 
@@ -235,6 +279,31 @@
     <div class="section-header">
       <span class="section-icon">&#9917;</span>
       <h2>Game Day</h2>
+    </div>
+
+    <div class="subsection">
+      <h3>Game sessions — managing multiple games</h3>
+      <p>Each game is saved as a named <strong>session</strong>. The session bar at the top of the Game Day tab shows the current session and lets you switch between past games or create a new one.</p>
+      <ul>
+        <li>Tap <strong>+ New Game</strong> to open the new game form — set the opponent name, date, half length (minutes), and shift length (minutes).</li>
+        <li>The <strong>session dropdown</strong> lists all saved games, newest first. Switching sessions loads that game's shifts and absent list.</li>
+        <li>Tap <strong>&#128275; Lock</strong> to lock the current session — locked sessions are read-only; role dropdowns and auto-assign are disabled. A red banner appears to confirm the game is locked. Tap again to unlock.</li>
+      </ul>
+      <div class="callout tip">
+        <span class="callout-icon">&#128161;</span>
+        <div class="callout-body"><p>Lock a game after it's over to preserve the rotation history without accidentally editing it.</p></div>
+      </div>
+    </div>
+
+    <div class="subsection">
+      <h3>Dynamic shift count</h3>
+      <p>The number of shifts is calculated automatically from the session's half length and shift length:</p>
+      <div class="formula">
+        <strong>Shifts per half</strong> = floor(halfLength &divide; minsPerShift)<br>
+        Example: 48-min half &divide; 8-min shifts = <strong>6 shifts</strong><br>
+        Example: 30-min half &divide; 8-min shifts = <strong>3 shifts</strong>
+      </div>
+      <p>The shift cards update immediately when you change these values. Any remainder minutes (e.g. 2 min left over from a 26-min half at 8 min/shift) are shown as a note — you can use that time for a final quick burst or ignore it.</p>
     </div>
 
     <div class="subsection">
@@ -248,7 +317,7 @@
 
     <div class="subsection">
       <h3>Running Auto-Assign</h3>
-      <p>Tap <strong>Auto-Assign</strong> to let SquadRotate fill all six shifts automatically. The algorithm balances:</p>
+      <p>Tap <strong>Auto-Assign</strong> to let SquadRotate fill all shifts automatically. The algorithm balances:</p>
       <ul>
         <li>Power ratings — no shift should be stacked all 3s or all 1s</li>
         <li>Position preferences — players go where they prefer when possible</li>
@@ -259,36 +328,52 @@
     </div>
 
     <div class="subsection">
-      <h3>Manual adjustments</h3>
-      <p>Each player in a shift card has a position dropdown. Change it at any time — the shift card updates its validation state and the rotation matrix refreshes immediately.</p>
+      <h3>Shift change summary</h3>
+      <p>Between consecutive shift cards (2 through N), SquadRotate shows a compact <strong>subs summary banner</strong> describing what changes between that shift and the previous one:</p>
+      <div class="diff-demo">
+        <div class="diff-row"><span class="diff-tag diff-off">OFF</span> <span>Jordan, Casey — coming off the field</span></div>
+        <div class="diff-row"><span class="diff-tag diff-on">ON</span> <span>Alex, Morgan — coming on from bench</span></div>
+        <div class="diff-row"><span class="diff-tag diff-move">MOVE</span> <span>Taylor: DEF &#8594; MID</span></div>
+      </div>
+      <p>This gives you a quick at-a-glance view of the substitutions to make at each shift change, without having to compare two full cards side by side.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Chalkboard view</h3>
+      <p>Each shift card includes a <strong>chalkboard</strong> — a green-pitch diagram showing where each player is positioned for that shift:</p>
+      <div class="chalk-demo">
+        <div class="chalk-row"><span class="chalk-chip chalk-str">Alex</span><span class="chalk-chip chalk-str">Jordan</span></div>
+        <div class="chalk-row"><span class="chalk-chip chalk-mid">Casey</span></div>
+        <div class="chalk-row"><span class="chalk-chip chalk-def">Morgan</span><span class="chalk-chip chalk-def">Taylor</span><span class="chalk-chip chalk-def">Sam</span></div>
+        <div class="chalk-row"><span class="chalk-chip chalk-gk">Riley</span></div>
+      </div>
+      <p>Player chips are color-coded by position (purple = GK, blue = DEF, amber = MID, red = STR). Bench players are listed below the pitch. The chalkboard updates live as you change role dropdowns.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Manual adjustments &amp; swap suggestions</h3>
+      <p>Each player in a shift card has a position dropdown. When you change a player's role to a field position, SquadRotate opens a <strong>swap modal</strong> — a ranked list of other players you might want to trade positions with to keep the shift balanced.</p>
+      <ul>
+        <li>Candidates are ranked by how well their position preferences match the vacated role</li>
+        <li>Field players (non-bench) appear above bench players since a swap has more tactical impact</li>
+        <li>Tap any candidate to execute the swap — both players switch roles in one action</li>
+        <li>Tap outside the modal or the X button to dismiss without swapping</li>
+      </ul>
       <p>The dropdown options are: <span class="chip chip-gk">GK</span> <span class="chip chip-def">DEF</span> <span class="chip chip-mid">MID</span> <span class="chip chip-str">STR</span> <span class="chip chip-bench">Bench</span></p>
     </div>
 
     <div class="subsection">
       <h3>Shift validation — red and green outlines</h3>
-      <p>Once you start assigning players to a shift, SquadRotate checks that the formation is correct:</p>
-      <ul>
-        <li>1 goalkeeper</li>
-        <li>3 defenders</li>
-        <li>1 midfielder</li>
-        <li>2 strikers</li>
-        <li>7 players on the field (remaining players on bench)</li>
-      </ul>
-      <p>A <span class="chip chip-green">green outline</span> means the shift is valid. A <span class="chip chip-red">red outline</span> means something is off — and the error message tells you exactly what to fix (e.g. "2 goalkeepers assigned — only 1 is allowed. Move the extra to another position.").</p>
-      <p>Validation only fires once at least one role has been assigned on a shift. Empty shift cards stay neutral.</p>
+      <p>Once you start assigning players to a shift, SquadRotate checks that the formation is correct against your configured formation counts. A <span class="chip chip-green">green outline</span> means the shift is valid. A <span class="chip chip-red">red outline</span> means something is off — the error message tells you exactly what to fix (e.g. "2 goalkeepers assigned — only 1 is allowed.").</p>
+      <p>Validation only fires once at least one role has been assigned. Empty shift cards stay neutral.</p>
     </div>
 
     <div class="subsection">
       <h3>Traffic light quality indicator</h3>
-      <p>Each shift card header shows a small colored dot — this is the quality indicator for that shift's balance:</p>
+      <p>Each shift card header shows a small colored dot — the quality indicator for that shift's power balance:</p>
       <div class="tl-row"><div class="tl-dot tl-green"></div> <span>Good balance — power ratings are well distributed</span></div>
       <div class="tl-row"><div class="tl-dot tl-yellow"></div> <span>Acceptable — slight imbalance, but workable</span></div>
       <div class="tl-row"><div class="tl-dot tl-red"></div> <span>Imbalanced — consider swapping players between shifts</span></div>
-    </div>
-
-    <div class="subsection">
-      <h3>Game label</h3>
-      <p>The editable field in the header (next to the team name) lets you label the current game — e.g. "Apr 20 vs. Red FC". This is for your reference only; it doesn't affect any logic.</p>
     </div>
   </div>
 
@@ -306,6 +391,16 @@
     </div>
 
     <div class="subsection">
+      <h3>Fatigue warnings</h3>
+      <p>SquadRotate watches for players assigned to <strong>two consecutive attacking shifts</strong> (Striker or Midfield back-to-back). These are the most physically demanding positions and repeated consecutive exposure can tire young players quickly.</p>
+      <p>When a player is flagged, their name chip in the affected shift card shows a <span class="chip chip-yellow">&#9888; yellow badge</span>. The flag clears as soon as the consecutive chain is broken by any non-attacking role (Goalkeeper, Defense, or Bench).</p>
+      <div class="callout info">
+        <span class="callout-icon">&#8505;&#65039;</span>
+        <div class="callout-body"><p>Fatigue warnings are advisory only — they don't block any assignment. Use them as a nudge to rotate attacking players more frequently, especially in warm weather.</p></div>
+      </div>
+    </div>
+
+    <div class="subsection">
       <h3>Position rotation matrix</h3>
       <p>Below the shift count tracker is the rotation matrix — a table showing how many times each player has played each position across all shifts in the current game.</p>
 
@@ -314,9 +409,9 @@
           <tr><th>Player</th><th>GK</th><th>DEF</th><th>MID</th><th>STR</th><th>BN</th></tr>
         </thead>
         <tbody>
-          <tr><td>Alex</td><td class="mc-0">–</td><td>2</td><td>1</td><td class="mc-mid">3</td><td class="mc-0">–</td></tr>
-          <tr><td>Jordan</td><td class="mc-high">5</td><td class="mc-0">–</td><td class="mc-0">–</td><td class="mc-0">–</td><td>1</td></tr>
-          <tr><td>Casey</td><td class="mc-0">–</td><td>1</td><td>2</td><td>2</td><td>1</td></tr>
+          <tr><td>Alex</td><td class="mc-0">&#8211;</td><td>2</td><td>1</td><td class="mc-mid">3</td><td class="mc-0">&#8211;</td></tr>
+          <tr><td>Jordan</td><td class="mc-high">5</td><td class="mc-0">&#8211;</td><td class="mc-0">&#8211;</td><td class="mc-0">&#8211;</td><td>1</td></tr>
+          <tr><td>Casey</td><td class="mc-0">&#8211;</td><td>1</td><td>2</td><td>2</td><td>1</td></tr>
         </tbody>
       </table>
 
@@ -324,7 +419,7 @@
       <ul>
         <li><span class="mc-mid">Yellow</span> — player has been in this position 3 or more shifts; consider rotating them</li>
         <li><span class="mc-high">Red</span> — player has been in this position nearly every shift; rotation is overdue</li>
-        <li><span class="mc-0">–</span> — zero appearances in this position this game</li>
+        <li><span class="mc-0">&#8211;</span> — zero appearances in this position this game</li>
       </ul>
       <p>The matrix updates live every time you change a role dropdown.</p>
     </div>
@@ -340,20 +435,13 @@
 
     <div class="subsection">
       <h3>Formation rules</h3>
-      <p>SquadRotate uses a fixed 3-1-2 formation for 7v7 play:</p>
-      <ul>
-        <li><span class="chip chip-gk">GK</span> — 1 goalkeeper</li>
-        <li><span class="chip chip-def">DEF</span> — 3 defenders</li>
-        <li><span class="chip chip-mid">MID</span> — 1 midfielder</li>
-        <li><span class="chip chip-str">STR</span> — 2 strikers</li>
-        <li><span class="chip chip-bench">Bench</span> — remaining players</li>
-      </ul>
-      <p>Total field players: 7. Any roster size above 7 will have players rotating through the bench each shift.</p>
+      <p>SquadRotate's formation is configurable from the Team Info tab. The default is 1-3-1-2 (GK / DEF / MID / STR) for 7v7. You can change it to match your league's format — for example, 1-3-2-2 for 8v8 or 1-3-2-3 for 9v9. The validation rules and auto-assign algorithm both read your configured formation at runtime.</p>
+      <p>Any roster size above your team size will have players rotating through the bench each shift — the algorithm accounts for this automatically.</p>
     </div>
 
     <div class="subsection">
       <h3>Auto-assign scoring formula</h3>
-      <p>When you tap Auto-Assign, the algorithm scores every possible player-to-position assignment and picks the combination that minimizes the total cost across all six shifts. The key factors in that score:</p>
+      <p>When you tap Auto-Assign, the algorithm scores every possible player-to-position assignment and picks the combination that minimizes the total cost across all shifts. The key factors in that score:</p>
 
       <div class="formula">
         <strong>Position preference match</strong> — large bonus if the player listed this position as a preference. Players always go where they want first when possible.<br><br>
@@ -369,18 +457,31 @@
     </div>
 
     <div class="subsection">
+      <h3>Fatigue detection logic</h3>
+      <p>The fatigue warning system scans every player's shift sequence and looks for consecutive pairs where both roles are attacking (Striker or Midfield). It flags the <em>second</em> shift in the consecutive pair:</p>
+      <ul>
+        <li>STR &#8594; STR — flagged</li>
+        <li>MID &#8594; MID — flagged</li>
+        <li>STR &#8594; MID or MID &#8594; STR — flagged</li>
+        <li>STR &#8594; DEF &#8594; STR — not flagged (DEF breaks the chain)</li>
+        <li>STR &#8594; Bench &#8594; STR — not flagged (Bench breaks the chain)</li>
+      </ul>
+      <p>Three consecutive attacking shifts produce two warnings (shifts 2 and 3 in the sequence).</p>
+    </div>
+
+    <div class="subsection">
       <h3>Traffic light scoring</h3>
       <p>The quality dot on each shift header is based on the sum of power ratings for field players (non-bench) in that shift, compared to the ideal average across all shifts:</p>
       <ul>
-        <li>Within ~10% of average → green</li>
-        <li>10–25% off → yellow</li>
-        <li>More than 25% off → red</li>
+        <li>Within ~10% of average &#8594; green</li>
+        <li>10&#8211;25% off &#8594; yellow</li>
+        <li>More than 25% off &#8594; red</li>
       </ul>
     </div>
 
     <div class="subsection">
       <h3>Validation thresholds</h3>
-      <p>Shift validation fires as soon as one or more players have been assigned a non-bench role. It checks exact counts against the 3-1-2 formation target and generates a specific corrective message for each violation found.</p>
+      <p>Shift validation fires as soon as one or more players have been assigned a non-bench role. It checks exact counts against your configured formation and generates a specific corrective message for each violation (e.g. wrong goalkeeper count, too many strikers, wrong total field count).</p>
     </div>
   </div>
 
@@ -394,7 +495,8 @@
 
     <div class="subsection">
       <h3>Where your data lives</h3>
-      <p>Everything in SquadRotate — rosters, team names, practice schedules, game day assignments — is stored in your browser's <strong>localStorage</strong>. No account, no server, no syncing. The data lives on the device and browser you're using.</p>
+      <p>Everything in SquadRotate — rosters, team names, practice schedules, game sessions, shift assignments — is stored in your browser's <strong>localStorage</strong>. No account, no server, no syncing. The data lives on the device and browser you're using.</p>
+      <p>Each team uses three localStorage keys: the main team state (roster, formation), a sessions store (game history), and a shifts store (per-session shift data).</p>
     </div>
 
     <div class="subsection">
