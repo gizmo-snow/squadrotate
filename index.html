@@ -54,7 +54,7 @@
   .absent-panel { background: var(--surface); border-radius: 8px; padding: 9px 11px; margin-bottom: 10px; }
   .absent-panel h3 { font-size: 0.7rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px; }
   .absent-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-  .absent-chip { padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface2); font-size: 0.72rem; cursor: pointer; user-select: none; transition: all 0.15s; }
+  .absent-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface2); font-size: 0.8rem; cursor: pointer; user-select: none; transition: all 0.15s; min-height: 36px; display: inline-flex; align-items: center; }
   .absent-chip.absent { background: var(--red); border-color: var(--red); color: white; text-decoration: line-through; }
 
   /* BUTTONS */
@@ -77,16 +77,16 @@
   .shift-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 11px; background: var(--surface2); }
   .shift-title { font-weight: 700; font-size: 0.88rem; }
   .shift-score { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; }
-  .traffic-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .traffic-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
   .traffic-green { background: var(--green); box-shadow: 0 0 5px var(--green); }
   .traffic-yellow { background: var(--yellow); box-shadow: 0 0 5px var(--yellow); }
   .traffic-red { background: var(--red); box-shadow: 0 0 5px var(--red); }
 
   .shift-body { padding: 7px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-  .player-row { display: flex; align-items: center; padding: 4px 6px; border-radius: 5px; background: var(--bg); gap: 4px; }
+  .player-row { display: flex; align-items: center; padding: 8px 6px; border-radius: 5px; background: var(--bg); gap: 4px; min-height: 44px; }
   .player-name { font-size: 0.76rem; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .player-name.benched { color: var(--text2); }
-  .role-select { font-size: 0.7rem; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; max-width: 86px; }
+  .role-select { font-size: 0.75rem; padding: 5px 4px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; min-height: 36px; flex-shrink: 0; }
   .role-select.role-gk  { border-color: var(--gk);    color: var(--gk); }
   .role-select.role-def { border-color: var(--def);   color: var(--def); }
   .role-select.role-mid { border-color: var(--mid);   color: var(--mid); }
