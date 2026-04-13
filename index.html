@@ -66,7 +66,12 @@
 
   /* SHIFT CARDS */
   .shifts-container { display: flex; flex-direction: column; gap: 9px; }
-  .shift-card { background: var(--surface); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .shift-card { background: var(--surface); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); transition: border-color 0.2s; }
+  .shift-card.shift-invalid { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+  .shift-card.shift-valid   { border-color: var(--green); }
+  .shift-errors { padding: 6px 11px; background: rgba(239,68,68,0.08); border-top: 1px solid rgba(239,68,68,0.3); display: flex; flex-direction: column; gap: 3px; }
+  .shift-error-item { font-size: 0.72rem; color: var(--red); display: flex; align-items: flex-start; gap: 5px; }
+  .shift-error-item::before { content: '→'; flex-shrink: 0; }
   .shift-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 11px; background: var(--surface2); }
   .shift-title { font-weight: 700; font-size: 0.88rem; }
   .shift-score { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; }
@@ -110,6 +115,20 @@
   .tag { display: inline-block; padding: 1px 5px; border-radius: 999px; font-size: 0.63rem; font-weight: 600; margin-left: 3px; }
   .tag-gk   { background: rgba(168,85,247,0.2); color: var(--gk); }
   .tag-warn { background: rgba(239,68,68,0.2);  color: var(--red); }
+
+  /* POSITION MATRIX */
+  .matrix-panel { background: var(--surface); border-radius: 10px; margin-top: 9px; overflow-x: auto; border: 1px solid var(--border); }
+  .matrix-panel h3 { padding: 7px 11px; font-size: 0.7rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; background: var(--surface2); white-space: nowrap; }
+  .matrix-table { width: 100%; font-size: 0.74rem; border-collapse: collapse; min-width: 300px; }
+  .matrix-table th { padding: 5px 9px; text-align: center; color: var(--text2); font-weight: 500; border-bottom: 1px solid var(--border); }
+  .matrix-table th:first-child { text-align: left; }
+  .matrix-table td { padding: 4px 9px; text-align: center; border-bottom: 1px solid rgba(71,85,105,0.3); }
+  .matrix-table td:first-child { text-align: left; font-weight: 500; }
+  .matrix-table tr:last-child td { border-bottom: none; }
+  .mc { display: inline-block; min-width: 22px; padding: 1px 5px; border-radius: 4px; font-weight: 600; }
+  .mc-0    { color: var(--text2); }
+  .mc-mid  { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .mc-high { background: rgba(239,68,68,0.25); color: var(--red); }
 
   /* ROSTER */
   .roster-grid { display: grid; gap: 7px; }
@@ -230,8 +249,11 @@
     <h3>Player Rotation Tracker</h3>
     <table class="stats-table" id="statsTable"></table>
   </div>
+  <div class="matrix-panel">
+    <h3>Position Rotation Matrix</h3>
+    <table class="matrix-table" id="matrixTable"></table>
+  </div>
 </div>
-
 
 <!-- ADD/EDIT PLAYER MODAL -->
 <div class="modal-overlay" id="addPlayerModal">
@@ -460,6 +482,7 @@ function renderAll() {
   renderAbsentChips();
   renderShifts();
   renderStats();
+  renderMatrix();
   renderRoster();
   renderPractice();
 }
@@ -491,13 +514,30 @@ function renderShifts() {
     const counts = { Goalkeeper:0, Defense:0, Midfield:0, Striker:0, Bench:0 };
     present.forEach(p => counts[sd[p.id]||'Bench']++);
 
-    const warnings = [];
-    if (counts.Goalkeeper !== 1 && present.length > 0) warnings.push(`GK: need 1`);
-    if (counts.Defense > FORMATION.Defense) warnings.push(`DEF: ${counts.Defense}/${FORMATION.Defense}`);
-    if (counts.Striker < FORMATION.Striker && fieldCount >= 6) warnings.push(`STR: need ${FORMATION.Striker}`);
+    // Only validate once at least one player has been explicitly assigned in this shift
+    const hasAnyAssignment = Object.keys(sd).length > 0;
+    const errors = [];
+    if (hasAnyAssignment) {
+      if (counts.Goalkeeper === 0)
+        errors.push(`No goalkeeper assigned — move one player to GK.`);
+      else if (counts.Goalkeeper > 1)
+        errors.push(`${counts.Goalkeeper} goalkeepers assigned — only 1 is allowed. Move the extra to another position.`);
+      if (counts.Defense > FORMATION.Defense)
+        errors.push(`${counts.Defense} defenders assigned but formation needs ${FORMATION.Defense}. Move ${counts.Defense - FORMATION.Defense} to another position.`);
+      if (counts.Defense < FORMATION.Defense && fieldCount >= 7)
+        errors.push(`Only ${counts.Defense} of ${FORMATION.Defense} defenders filled — move a bench player to DEF.`);
+      if (counts.Midfield === 0 && fieldCount >= 7)
+        errors.push(`No midfielder assigned — move one player to MID.`);
+      if (counts.Striker < FORMATION.Striker && fieldCount >= 7)
+        errors.push(`Only ${counts.Striker} of ${FORMATION.Striker} strikers filled — move a bench player to STR.`);
+      if (counts.Striker > FORMATION.Striker)
+        errors.push(`${counts.Striker} strikers assigned but formation needs ${FORMATION.Striker}. Move ${counts.Striker - FORMATION.Striker} to another position.`);
+    }
+    const isValid = hasAnyAssignment && errors.length === 0;
+    const cardClass = !hasAnyAssignment ? 'shift-card' : isValid ? 'shift-card shift-valid' : 'shift-card shift-invalid';
 
     const card = document.createElement('div');
-    card.className = 'shift-card';
+    card.className = cardClass;
     card.innerHTML = `
       <div class="shift-header">
         <span class="shift-title">Shift ${s+1}</span>
@@ -508,6 +548,7 @@ function renderShifts() {
         </div>
       </div>
       <div class="shift-body" id="sb${s}"></div>
+      ${errors.length ? `<div class="shift-errors">${errors.map(e=>`<div class="shift-error-item">${e}</div>`).join('')}</div>` : ''}
       <div class="shift-summary">
         <div class="role-count">
           <span class="rc rc-gk">GK:${counts.Goalkeeper}</span>
@@ -515,7 +556,6 @@ function renderShifts() {
           <span class="rc rc-mid">MID:${counts.Midfield}</span>
           <span class="rc rc-str">STR:${counts.Striker}</span>
           <span class="rc rc-bench">BN:${counts.Bench}</span>
-          ${warnings.map(w=>`<span class="rc rc-warn">⚠ ${w}</span>`).join('')}
         </div>
         <span>${fieldCount} on field</span>
       </div>`;
@@ -583,6 +623,53 @@ function renderRoster() {
     </div>`).join('');
 }
 
+function renderMatrix() {
+  const posOrder = ['Goalkeeper','Defense','Midfield','Striker','Bench'];
+  const numShifts = state.shifts.length;
+
+  // Count per player per position
+  const counts = {};
+  state.players.forEach(p => {
+    counts[p.id] = { Goalkeeper:0, Defense:0, Midfield:0, Striker:0, Bench:0 };
+  });
+  state.shifts.forEach(sd => {
+    state.players.forEach(p => {
+      const role = sd[p.id] || (state.absent.includes(p.id) ? null : 'Bench');
+      if (role) counts[p.id][role]++;
+    });
+  });
+
+  // Threshold: yellow = 3+, red = numShifts-1+ (all but one shift)
+  function cellClass(n) {
+    if (n === 0) return 'mc mc-0';
+    if (n >= numShifts - 1) return 'mc mc-high';
+    if (n >= 3) return 'mc mc-mid';
+    return 'mc';
+  }
+
+  document.getElementById('matrixTable').innerHTML = `
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th style="color:var(--gk)">GK</th>
+        <th style="color:var(--def)">DEF</th>
+        <th style="color:var(--mid)">MID</th>
+        <th style="color:var(--str)">STR</th>
+        <th style="color:var(--text2)">BN</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${state.players.map(p => {
+        const c = counts[p.id];
+        const absent = state.absent.includes(p.id);
+        return `<tr style="${absent?'opacity:0.4':''}">
+          <td>${p.name.split(' ')[0]}</td>
+          ${posOrder.map(pos => `<td><span class="${cellClass(c[pos])}">${c[pos]||'–'}</span></td>`).join('')}
+        </tr>`;
+      }).join('')}
+    </tbody>`;
+}
+
 function renderPractice() {
   const agenda = TEAMS[currentTeam].weeklyAgenda;
   document.getElementById('weeklyAgenda').innerHTML = `
@@ -613,6 +700,7 @@ function setRole(shiftIdx, playerId, role) {
   saveTeamState(currentTeam, state);
   renderShifts();
   renderStats();
+  renderMatrix();
 }
 
 function clearAllShifts() {
