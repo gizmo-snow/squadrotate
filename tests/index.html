@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SquadRotate Tests</title>
+<link rel="stylesheet" href="qunit.css">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; }
+  #qunit { color: #f1f5f9; }
+  #qunit-header { background: #1e293b; border-bottom: 1px solid #475569; color: #22c55e; }
+  #qunit-banner { background: #334155; }
+  #qunit-banner.qunit-pass { background: #14532d; }
+  #qunit-banner.qunit-fail { background: #7f1d1d; }
+  #qunit-testrunner-toolbar { background: #1e293b; border-bottom: 1px solid #475569; color: #94a3b8; }
+  #qunit-tests { color: #f1f5f9; }
+  #qunit-tests li { border-bottom: 1px solid #334155; }
+  #qunit-tests li.pass .test-name { color: #22c55e; }
+  #qunit-tests li.fail .test-name { color: #ef4444; }
+  #qunit-testresult { background: #1e293b; color: #f1f5f9; border-top: 1px solid #475569; padding: 10px 14px; }
+  .qunit-source { color: #94a3b8 !important; }
+  a { color: #22c55e; }
+</style>
+</head>
+<body>
+
+<div id="qunit"></div>
+<div id="qunit-fixture"></div>
+
+<!-- QUnit -->
+<script src="qunit.js"></script>
+
+<!-- Shared helpers & logic -->
+<script src="helpers.js"></script>
+<script src="logic.js"></script>
+
+<!-- Test suites -->
+<script src="test-shiftdiff.js"></script>
+<script src="test-shiftcount.js"></script>
+<script src="test-formation.js"></script>
+<script src="test-autoassign.js"></script>
+<script src="test-fatigue.js"></script>
+<script src="test-swaprank.js"></script>
+
+</body>
+</html>
