@@ -141,6 +141,14 @@
   .mc-mid  { background: rgba(245,158,11,0.2); color: var(--yellow); }
   .mc-high { background: rgba(239,68,68,0.25); color: var(--red); }
 
+  /* SESSION BAR (#7) */
+  .session-bar { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); padding: 9px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .session-select { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 0.8rem; cursor: pointer; }
+  .session-lock-btn { padding: 6px 11px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); white-space: nowrap; }
+  .session-lock-btn.locked { border-color: var(--yellow); color: var(--yellow); }
+  .session-locked-banner { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); border-radius: 8px; padding: 7px 12px; font-size: 0.78rem; color: var(--yellow); margin-bottom: 8px; display: none; }
+  .session-locked-banner.visible { display: block; }
+
   /* FORMATION SELECTOR */
   .formation-panel { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); padding: 11px 13px; margin-bottom: 12px; }
   .formation-panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 9px; }
@@ -276,6 +284,9 @@
 
 <!-- GAME DAY VIEW -->
 <div id="view-gameday" class="view">
+  <!-- Session bar (#7) -->
+  <div class="session-bar" id="sessionBar"></div>
+  <div class="session-locked-banner" id="lockedBanner">🔒 This game is locked and read-only. Tap Unlock to edit.</div>
   <div class="absent-panel">
     <h3>Mark Absent (tap to toggle)</h3>
     <div class="absent-chips" id="absentChips"></div>
@@ -342,6 +353,22 @@
       <button class="btn btn-primary" onclick="savePracticeWeek()">Save</button>
       <button class="btn btn-secondary" onclick="closePracticeModal()">Cancel</button>
       <button class="btn btn-danger" id="practiceDeleteBtn" style="display:none;margin-left:auto" onclick="deletePracticeWeek()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW GAME MODAL (#7) -->
+<div class="modal-overlay" id="newGameModal">
+  <div class="modal">
+    <h2>New Game</h2>
+    <div class="field-group"><label>Date</label><input type="date" id="ngDate"></div>
+    <div class="field-group"><label>Opponent</label><input type="text" id="ngOpponent" placeholder="e.g. Blue FC" maxlength="40"></div>
+    <div class="field-group"><label>Half Length (minutes)</label><input type="number" id="ngHalf" min="5" max="60" value="25"></div>
+    <div class="field-group"><label>Minutes per Shift</label><input type="number" id="ngMins" min="1" max="30" value="8"></div>
+    <div id="ngPreview" style="font-size:0.8rem;color:var(--text2);margin:8px 0 2px;min-height:1.4em;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="createSession()">Start Game</button>
+      <button class="btn btn-secondary" onclick="closeNewGameModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -549,6 +576,7 @@ function activePlayers() {
 }
 
 function renderAll() {
+  renderSessionBar();
   renderAbsentChips();
   renderShifts();
   renderStats();
@@ -921,18 +949,24 @@ function toggleAbsent(id) {
 }
 
 function setRole(shiftIdx, playerId, role) {
+  const session = getActiveSession();
+  if (session && session.locked) { showToast('Game is locked — unlock to make changes'); return; }
   if (!state.shifts[shiftIdx]) state.shifts[shiftIdx] = {};
   state.shifts[shiftIdx][playerId] = role;
   saveTeamState(currentTeam, state);
+  saveCurrentSessionShifts();
   renderShifts();
   renderStats();
   renderMatrix();
 }
 
 function clearAllShifts() {
+  const session = getActiveSession();
+  if (session && session.locked) { showToast('Game is locked — unlock to make changes'); return; }
   if (!confirm('Clear all shift assignments?')) return;
   state.shifts = Array.from({length: NUM_SHIFTS}, () => ({}));
   saveTeamState(currentTeam, state);
+  saveCurrentSessionShifts();
   renderAll();
   showToast('Shifts cleared');
 }
@@ -992,6 +1026,7 @@ function autoAssign() {
   }
 
   saveTeamState(currentTeam, state);
+  saveCurrentSessionShifts();
   renderAll();
   showToast('Shifts auto-assigned!');
 }
@@ -1003,6 +1038,200 @@ function shiftsPlayed(playerId, beforeShift) {
     if (r && r !== 'Bench') n++;
   }
   return n;
+}
+
+// ─── NAMED GAME SESSIONS (#7) ────────────────────────────────────────────────
+function sessionsKey(teamKey) { return `squadrotate_${teamKey}_sessions_v1`; }
+function shiftsStoreKey(teamKey) { return `squadrotate_${teamKey}_shifts_v1`; }
+
+function getSessionsStore(teamKey) {
+  try {
+    const s = localStorage.getItem(sessionsKey(teamKey));
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return null;
+}
+
+function saveSessionsStore(teamKey, store) {
+  localStorage.setItem(sessionsKey(teamKey), JSON.stringify(store));
+}
+
+function getShiftsStore(teamKey) {
+  try {
+    const s = localStorage.getItem(shiftsStoreKey(teamKey));
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return {};
+}
+
+function saveShiftsStore(teamKey, store) {
+  localStorage.setItem(shiftsStoreKey(teamKey), JSON.stringify(store));
+}
+
+function getActiveSession() {
+  const store = getSessionsStore(currentTeam);
+  if (!store || !store.sessions.length) return null;
+  return store.sessions.find(s => s.id === store.activeSessionId) || store.sessions[0];
+}
+
+// Migrate existing shifts into the sessions store on first load
+function ensureSessionsExist(teamKey) {
+  if (getSessionsStore(teamKey)) return; // already migrated
+  const teamState = getTeamState(teamKey);
+  const defaultId = 'session-default';
+  const store = {
+    activeSessionId: defaultId,
+    sessions: [{
+      id: defaultId,
+      date: new Date().toISOString().slice(0,10),
+      opponent: '',
+      halfLength: 25,
+      minsPerShift: 8,
+      locked: false,
+      label: 'Game 1'
+    }]
+  };
+  saveSessionsStore(teamKey, store);
+  // Save existing shifts into the shifts store
+  const shiftsStore = {};
+  shiftsStore[defaultId] = {
+    shifts: teamState.shifts || [],
+    absent: teamState.absent || [],
+    gameLabel: teamState.gameLabel || ''
+  };
+  saveShiftsStore(teamKey, shiftsStore);
+}
+
+// Save current in-memory shifts to the active session's slot
+function saveCurrentSessionShifts() {
+  const session = getActiveSession();
+  if (!session) return;
+  const store = getShiftsStore(currentTeam);
+  store[session.id] = { shifts: state.shifts, absent: state.absent, gameLabel: state.gameLabel || '' };
+  saveShiftsStore(currentTeam, store);
+}
+
+// Load shifts for a session into in-memory state
+function loadSessionShifts(sessionId) {
+  const store = getShiftsStore(currentTeam);
+  const data  = store[sessionId];
+  if (data) {
+    state.shifts    = data.shifts    || Array.from({length: NUM_SHIFTS}, () => ({}));
+    state.absent    = data.absent    || [];
+    state.gameLabel = data.gameLabel || '';
+  } else {
+    state.shifts    = Array.from({length: NUM_SHIFTS}, () => ({}));
+    state.absent    = [];
+    state.gameLabel = '';
+  }
+}
+
+function switchSession(sessionId) {
+  saveCurrentSessionShifts();
+  const sessStore = getSessionsStore(currentTeam);
+  sessStore.activeSessionId = sessionId;
+  saveSessionsStore(currentTeam, sessStore);
+  loadSessionShifts(sessionId);
+  saveTeamState(currentTeam, state);
+  renderAll();
+  renderSessionBar();
+}
+
+function openNewGameModal() {
+  // Pre-fill date with today
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('ngDate').value = today;
+  document.getElementById('ngOpponent').value = '';
+  // Keep half length / mins per shift from last session or defaults
+  const last = getActiveSession();
+  document.getElementById('ngHalf').value = last ? last.halfLength : 25;
+  document.getElementById('ngMins').value  = last ? last.minsPerShift : 8;
+  updateNewGamePreview();
+  document.getElementById('newGameModal').classList.add('open');
+}
+
+function closeNewGameModal() {
+  document.getElementById('newGameModal').classList.remove('open');
+}
+
+function updateNewGamePreview() {
+  const half = parseInt(document.getElementById('ngHalf').value, 10) || 0;
+  const mins = parseInt(document.getElementById('ngMins').value,  10) || 1;
+  const shifts = Math.max(1, Math.floor(half / mins));
+  const rem    = half % mins;
+  const el = document.getElementById('ngPreview');
+  el.textContent = shifts > 0
+    ? `${shifts} shifts per half × 2 = ${shifts*2} total${rem > 0 ? ` (${rem} min remaining)` : ''}`
+    : '';
+}
+
+function createSession() {
+  const date     = document.getElementById('ngDate').value || new Date().toISOString().slice(0,10);
+  const opponent = document.getElementById('ngOpponent').value.trim();
+  const half     = parseInt(document.getElementById('ngHalf').value, 10) || 25;
+  const mins     = parseInt(document.getElementById('ngMins').value,  10) || 8;
+
+  saveCurrentSessionShifts();
+
+  const id    = 'session-' + Date.now();
+  const label = opponent
+    ? `${date.slice(5).replace('-','/')} vs ${opponent}`
+    : `Game ${date.slice(5).replace('-','/')}`;
+  const session = { id, date, opponent, halfLength: half, minsPerShift: mins, locked: false, label };
+
+  const sessStore = getSessionsStore(currentTeam) || { sessions:[], activeSessionId: null };
+  sessStore.sessions.unshift(session); // newest first
+  sessStore.activeSessionId = id;
+  saveSessionsStore(currentTeam, sessStore);
+
+  // Fresh shifts for new session
+  state.shifts    = Array.from({length: NUM_SHIFTS}, () => ({}));
+  state.absent    = [];
+  state.gameLabel = label;
+  saveTeamState(currentTeam, state);
+  saveCurrentSessionShifts();
+
+  closeNewGameModal();
+  renderAll();
+  renderSessionBar();
+  showToast(`Game created: ${label}`);
+}
+
+function toggleSessionLock() {
+  const sessStore = getSessionsStore(currentTeam);
+  const session   = getActiveSession();
+  if (!session) return;
+  const isLocked = session.locked;
+  if (!isLocked && !confirm('Lock this game? It will become read-only.')) return;
+  if (isLocked  && !confirm('Unlock this game? You'll be able to edit it again.')) return;
+  session.locked = !isLocked;
+  saveSessionsStore(currentTeam, sessStore);
+  renderSessionBar();
+  renderShifts(); // re-render to enable/disable dropdowns
+  showToast(session.locked ? 'Game locked 🔒' : 'Game unlocked');
+}
+
+function renderSessionBar() {
+  const sessStore = getSessionsStore(currentTeam);
+  const bar = document.getElementById('sessionBar');
+  const banner = document.getElementById('lockedBanner');
+  if (!sessStore || !sessStore.sessions.length) {
+    bar.innerHTML = `<button class="btn btn-primary" style="font-size:0.78rem" onclick="openNewGameModal()">+ New Game</button>`;
+    banner.classList.remove('visible');
+    return;
+  }
+  const sessions = sessStore.sessions;
+  const active   = getActiveSession();
+  const locked   = active && active.locked;
+
+  bar.innerHTML = `
+    <select class="session-select" onchange="switchSession(this.value)">
+      ${sessions.map(s => `<option value="${s.id}" ${s.id === sessStore.activeSessionId ? 'selected' : ''}>${s.locked?'🔒 ':''}${s.label}</option>`).join('')}
+    </select>
+    <button class="btn btn-secondary" style="font-size:0.75rem;padding:5px 10px" onclick="openNewGameModal()">+ New</button>
+    <button class="session-lock-btn ${locked?'locked':''}" onclick="toggleSessionLock()">${locked?'🔒 Unlock':'🔓 Lock'}</button>`;
+
+  banner.classList.toggle('visible', !!locked);
 }
 
 // ─── ROSTER MODAL ────────────────────────────────────────────────────────────
@@ -1085,7 +1314,7 @@ function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  setTimeout(() => t.classList.remove('show'), 4000);
 }
 
 document.getElementById('gameLabel').addEventListener('input', e => {
@@ -1096,8 +1325,20 @@ document.getElementById('gameLabel').addEventListener('input', e => {
 document.getElementById('addPlayerModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
+document.getElementById('newGameModal').addEventListener('click', function(e) {
+  if (e.target === this) closeNewGameModal();
+});
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
+// Migrate both teams to sessions store on startup
+ensureSessionsExist('u78');
+ensureSessionsExist('u912');
+
+// Wire up New Game modal live preview
+['ngHalf','ngMins'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateNewGamePreview);
+});
+
 updateTeamUI();
 renderAll();
 </script>
