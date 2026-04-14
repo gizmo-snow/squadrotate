@@ -209,6 +209,16 @@
   .pos-str { background: rgba(239,68,68,0.2);   color: var(--str); }
   .add-player-btn { width: 100%; padding: 11px; border-radius: 10px; border: 2px dashed var(--border); background: transparent; color: var(--text2); font-size: 0.82rem; cursor: pointer; margin-top: 4px; }
   .add-player-btn:hover { border-color: var(--green); color: var(--green); }
+  /* COACH ROSTER (#25) */
+  .coach-panel { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden; }
+  .coach-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 13px; background: var(--surface2); }
+  .coach-panel-header span { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); }
+  .coach-list { display: flex; flex-direction: column; }
+  .coach-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 13px; border-bottom: 1px solid rgba(71,85,105,0.3); cursor: pointer; }
+  .coach-row:last-child { border-bottom: none; }
+  .coach-row:hover { background: var(--bg); }
+  .coach-name { font-size: 0.85rem; font-weight: 600; }
+  .coach-role { font-size: 0.7rem; color: var(--text2); margin-top: 1px; }
 
   /* PRACTICE */
   .practice-section { background: var(--surface); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 10px; }
@@ -282,6 +292,9 @@
     <div class="formation-picker" id="formationInputs"></div>
   </div>
 
+  <!-- Coach roster (#25) -->
+  <div id="coachRosterSection"></div>
+
   <div class="roster-grid" id="rosterGrid"></div>
   <button class="add-player-btn" onclick="openAddPlayer()">+ Add Player</button>
 </div>
@@ -313,6 +326,28 @@
   <div class="matrix-panel">
     <h3>Position Rotation Matrix</h3>
     <table class="matrix-table" id="matrixTable"></table>
+  </div>
+</div>
+
+<!-- ADD/EDIT COACH MODAL (#25) -->
+<div class="modal-overlay" id="coachModal">
+  <div class="modal">
+    <h2 id="coachModalTitle">Add Coach</h2>
+    <div class="field-group"><label>Name</label><input type="text" id="cmName" placeholder="First Last" maxlength="40"></div>
+    <div class="field-group">
+      <label>Role</label>
+      <select id="cmRole">
+        <option value="Head Coach">Head Coach</option>
+        <option value="Assistant Coach">Assistant Coach</option>
+        <option value="Volunteer">Volunteer</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveCoach()">Save</button>
+      <button class="btn btn-secondary" onclick="closeCoachModal()">Cancel</button>
+      <button class="btn btn-danger" id="coachDeleteBtn" style="display:none;margin-left:auto" onclick="deleteCoach()">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -419,6 +454,10 @@ const ROLE_ABBR  = { Goalkeeper:'GK', Defense:'DEF', Midfield:'MID', Striker:'ST
 const ROLE_CLASS = { Goalkeeper:'role-gk', Defense:'role-def', Midfield:'role-mid', Striker:'role-str', Bench:'role-bench' };
 const POS_CLASS  = { Goalkeeper:'pos-gk', Defense:'pos-def', Midfield:'pos-mid', Striker:'pos-str' };
 const FORMATION_DEFAULT = { Goalkeeper:1, Defense:3, Midfield:1, Striker:2 }; // 3-1-2 / 7v7
+const DEFAULT_COACHES = {
+  u78:  [ {id:1, name:'Brennan', role:'Head Coach'}, {id:2, name:'Coach Keenan', role:'Assistant Coach'}, {id:3, name:'Coach Gary', role:'Volunteer'} ],
+  u912: [ {id:1, name:'Brennan', role:'Head Coach'}, {id:2, name:'Ignatius', role:'Assistant Coach'} ],
+};
 const DEFAULT_DAILY_ROUTINE = [
   { time:'00–10m', activity:'Warm-up & Footwork',  focus:'Dynamic running + Training ladder for agility.' },
   { time:'10–20m', activity:'Strategy Session',    focus:'Magnet board talk: Position names and daily goal.' },
@@ -590,6 +629,9 @@ function getTeamState(teamKey) {
       parsed.players.forEach(p => { if (!Array.isArray(p.positions)) p.positions = []; });
       // Migrate: add dailyRoutine if missing (#27)
       if (!parsed.dailyRoutine) parsed.dailyRoutine = JSON.parse(JSON.stringify(DEFAULT_DAILY_ROUTINE));
+      // Migrate: add coaches if missing (#25)
+      if (!parsed.coaches) parsed.coaches = JSON.parse(JSON.stringify(DEFAULT_COACHES[teamKey] || []));
+      if (!parsed.nextCoachId) parsed.nextCoachId = (parsed.coaches ? Math.max(...parsed.coaches.map(c => c.id||0), 0) + 1 : 1);
       return parsed;
     }
   } catch(e) {}
@@ -604,6 +646,8 @@ function getTeamState(teamKey) {
     formation: { ...FORMATION_DEFAULT },
     teamSize: 7,
     dailyRoutine: JSON.parse(JSON.stringify(DEFAULT_DAILY_ROUTINE)),
+    coaches: JSON.parse(JSON.stringify(DEFAULT_COACHES[teamKey] || [])),
+    nextCoachId: (DEFAULT_COACHES[teamKey] || []).length + 1,
   };
 }
 
@@ -659,6 +703,7 @@ function renderAll() {
   renderShifts();
   renderStats();
   renderMatrix();
+  renderCoachRoster();
   renderPractice();
 }
 
@@ -922,6 +967,81 @@ function selectFormation(name) {
   renderFormationSelector();
   renderShifts(); // refresh shift cards so validation errors update immediately
   showToast(`Formation: ${name}`);
+}
+
+function renderCoachRoster() {
+  const coaches = state.coaches || [];
+  document.getElementById('coachRosterSection').innerHTML = `
+    <div class="coach-panel">
+      <div class="coach-panel-header">
+        <span>Coaching Staff</span>
+        <button class="btn btn-primary" style="padding:4px 10px;font-size:0.72rem;" onclick="openAddCoach()">+ Add Coach</button>
+      </div>
+      <div class="coach-list">
+        ${coaches.length ? coaches.map(c => `
+          <div class="coach-row" onclick="openEditCoach(${c.id})">
+            <div><div class="coach-name">${c.name}</div><div class="coach-role">${c.role}</div></div>
+            <span style="font-size:0.7rem;color:var(--text2)">›</span>
+          </div>`).join('') : `<div style="padding:13px;font-size:0.8rem;color:var(--text2);text-align:center">No coaches added yet</div>`}
+      </div>
+    </div>`;
+}
+
+// ─── COACH CRUD (#25) ────────────────────────────────────────────────────────
+let editingCoachId = null;
+
+function openAddCoach() {
+  editingCoachId = null;
+  document.getElementById('coachModalTitle').textContent = 'Add Coach';
+  document.getElementById('cmName').value = '';
+  document.getElementById('cmRole').value = 'Assistant Coach';
+  document.getElementById('coachDeleteBtn').style.display = 'none';
+  document.getElementById('coachModal').classList.add('open');
+}
+
+function openEditCoach(id) {
+  const c = (state.coaches || []).find(x => x.id === id);
+  if (!c) return;
+  editingCoachId = id;
+  document.getElementById('coachModalTitle').textContent = 'Edit Coach';
+  document.getElementById('cmName').value = c.name;
+  document.getElementById('cmRole').value = c.role;
+  document.getElementById('coachDeleteBtn').style.display = 'block';
+  document.getElementById('coachModal').classList.add('open');
+}
+
+function saveCoach() {
+  const name = document.getElementById('cmName').value.trim();
+  if (!name) { showToast('Enter a name'); return; }
+  const role = document.getElementById('cmRole').value;
+  if (!state.coaches) state.coaches = [];
+  if (editingCoachId !== null) {
+    const c = state.coaches.find(x => x.id === editingCoachId);
+    if (c) { c.name = name; c.role = role; }
+    showToast('Coach updated');
+  } else {
+    if (!state.nextCoachId) state.nextCoachId = (state.coaches.length + 1);
+    state.coaches.push({ id: state.nextCoachId++, name, role });
+    showToast('Coach added');
+  }
+  saveTeamState(currentTeam, state);
+  closeCoachModal();
+  renderCoachRoster();
+}
+
+function deleteCoach() {
+  if (editingCoachId === null) return;
+  const c = (state.coaches || []).find(x => x.id === editingCoachId);
+  if (!c || !confirm(`Remove ${c.name}?`)) return;
+  state.coaches = state.coaches.filter(x => x.id !== editingCoachId);
+  saveTeamState(currentTeam, state);
+  closeCoachModal();
+  renderCoachRoster();
+  showToast('Coach removed');
+}
+
+function closeCoachModal() {
+  document.getElementById('coachModal').classList.remove('open');
 }
 
 function renderRoster() {
@@ -1714,6 +1834,9 @@ document.getElementById('swapModal').addEventListener('click', function(e) {
 });
 document.getElementById('routineModal').addEventListener('click', function(e) {
   if (e.target === this) closeRoutineModal();
+});
+document.getElementById('coachModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCoachModal();
 });
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
