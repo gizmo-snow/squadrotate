@@ -573,6 +573,11 @@ function getTeamState(teamKey) {
       if (!parsed.teamSize)  parsed.teamSize  = 7;
       // Migrate: add nextId if missing (prevents NaN ids on new players)
       if (!parsed.nextId) parsed.nextId = (parsed.players ? Math.max(...parsed.players.map(p => p.id || 0), 0) + 1 : 1);
+      // Migrate: ensure arrays exist and players have required fields
+      if (!Array.isArray(parsed.players)) parsed.players = JSON.parse(JSON.stringify(def.defaultPlayers));
+      if (!Array.isArray(parsed.shifts))  parsed.shifts  = [];
+      if (!Array.isArray(parsed.absent))  parsed.absent  = [];
+      parsed.players.forEach(p => { if (!Array.isArray(p.positions)) p.positions = []; });
       return parsed;
     }
   } catch(e) {}
@@ -634,13 +639,13 @@ function activePlayers() {
 }
 
 function renderAll() {
+  renderFormationSelector(); // always runs first — Team Info tab data
+  renderRoster();
   renderSessionBar();
   renderAbsentChips();
   renderShifts();
   renderStats();
   renderMatrix();
-  renderFormationSelector();
-  renderRoster();
   renderPractice();
 }
 
@@ -902,6 +907,7 @@ function selectFormation(name) {
   state.teamSize  = 7;
   saveTeamState(currentTeam, state);
   renderFormationSelector();
+  renderShifts(); // refresh shift cards so validation errors update immediately
   showToast(`Formation: ${name}`);
 }
 
@@ -1406,7 +1412,9 @@ function renderSessionBar() {
   const active   = getActiveSession();
   const locked   = active && active.locked;
   const nSh = active ? getNumShifts(active) : 6;
-  const shiftInfo = `<span style="font-size:0.7rem;color:var(--text2);white-space:nowrap">${nSh} shifts</span>`;
+  const fm  = getFormation();
+  const fmName = `${fm.Defense}-${fm.Midfield}-${fm.Striker}`;
+  const shiftInfo = `<span style="font-size:0.7rem;color:var(--text2);white-space:nowrap">${nSh} shifts · <span style="color:var(--green)">${fmName}</span></span>`;
 
   bar.innerHTML = `
     <select class="session-select" onchange="switchSession(this.value)">
