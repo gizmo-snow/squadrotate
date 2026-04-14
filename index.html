@@ -173,19 +173,22 @@
 
   /* FORMATION SELECTOR */
   .formation-panel { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); padding: 11px 13px; margin-bottom: 12px; }
-  .formation-panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 9px; }
-  .formation-total { font-size: 0.75rem; color: var(--text2); }
-  .formation-total.valid { color: var(--green); }
-  .formation-total.invalid { color: var(--red); }
-  .formation-inputs { display: flex; gap: 8px; flex-wrap: wrap; }
-  .formation-field { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .formation-field label { font-size: 0.66rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-  .formation-field label.lbl-gk  { color: var(--gk); }
-  .formation-field label.lbl-def { color: var(--def); }
-  .formation-field label.lbl-mid { color: var(--mid); }
-  .formation-field label.lbl-str { color: var(--str); }
-  .formation-field input[type=number] { width: 52px; padding: 5px; text-align: center; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 0.9rem; font-weight: 700; }
-  .formation-error { font-size: 0.73rem; color: var(--red); margin-top: 6px; min-height: 0; }
+  .formation-panel-header { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2); margin-bottom: 9px; }
+  .formation-picker { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+  .formation-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 8px 7px; cursor: pointer; text-align: center; transition: border-color 0.15s; -webkit-tap-highlight-color: transparent; }
+  .formation-card:active { opacity: 0.8; }
+  .formation-card.selected { border-color: var(--green); background: rgba(34,197,94,0.07); }
+  .formation-card-name { font-size: 1rem; font-weight: 700; color: var(--text2); letter-spacing: 0.03em; }
+  .formation-card.selected .formation-card-name { color: var(--green); }
+  .formation-card-desc { font-size: 0.62rem; color: var(--text2); line-height: 1.3; margin-top: 4px; }
+  .formation-diagram { display: flex; flex-direction: column; align-items: center; gap: 3px; margin: 5px 0 4px; }
+  .frow { display: flex; gap: 4px; justify-content: center; }
+  .fd { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+  .formation-card.selected .fd { background: var(--text2); }
+  .fd-str { background: var(--str) !important; }
+  .fd-mid { background: var(--mid) !important; }
+  .fd-def { background: var(--def) !important; }
+  .fd-gk  { background: var(--gk)  !important; }
 
   /* ROSTER */
   .roster-grid { display: grid; gap: 7px; }
@@ -275,12 +278,8 @@
   </div>
   <!-- Formation selector (#12) -->
   <div class="formation-panel" id="formationPanel">
-    <div class="formation-panel-header">
-      <span>Formation</span>
-      <span class="formation-total" id="formationTotal"></span>
-    </div>
-    <div class="formation-inputs" id="formationInputs"></div>
-    <div class="formation-error" id="formationError"></div>
+    <div class="formation-panel-header">Formation — 7v7 (GK + 6 outfield)</div>
+    <div class="formation-picker" id="formationInputs"></div>
   </div>
 
   <div class="roster-grid" id="rosterGrid"></div>
@@ -574,6 +573,11 @@ function getTeamState(teamKey) {
       if (!parsed.teamSize)  parsed.teamSize  = 7;
       // Migrate: add nextId if missing (prevents NaN ids on new players)
       if (!parsed.nextId) parsed.nextId = (parsed.players ? Math.max(...parsed.players.map(p => p.id || 0), 0) + 1 : 1);
+      // Migrate: ensure arrays exist and players have required fields
+      if (!Array.isArray(parsed.players)) parsed.players = JSON.parse(JSON.stringify(def.defaultPlayers));
+      if (!Array.isArray(parsed.shifts))  parsed.shifts  = [];
+      if (!Array.isArray(parsed.absent))  parsed.absent  = [];
+      parsed.players.forEach(p => { if (!Array.isArray(p.positions)) p.positions = []; });
       return parsed;
     }
   } catch(e) {}
@@ -635,13 +639,13 @@ function activePlayers() {
 }
 
 function renderAll() {
+  renderFormationSelector(); // always runs first — Team Info tab data
+  renderRoster();
   renderSessionBar();
   renderAbsentChips();
   renderShifts();
   renderStats();
   renderMatrix();
-  renderFormationSelector();
-  renderRoster();
   renderPractice();
 }
 
@@ -861,40 +865,50 @@ function renderStats() {
     }).join('')}</tbody>`;
 }
 
-function renderFormationSelector() {
-  const fm = getFormation();
-  const teamSize = state.teamSize || 7;
-  const total = Object.values(fm).reduce((a,b) => a+b, 0);
-  const valid = total === teamSize;
+const FORMATIONS = [
+  { name:'3-1-2', fm:{Goalkeeper:1,Defense:3,Midfield:1,Striker:2}, desc:'Balanced — solid back, two up top' },
+  { name:'2-2-2', fm:{Goalkeeper:1,Defense:2,Midfield:2,Striker:2}, desc:'Box shape — high press, lots of options' },
+  { name:'3-2-1', fm:{Goalkeeper:1,Defense:3,Midfield:2,Striker:1}, desc:'Defensive — protect a lead' },
+  { name:'2-3-1', fm:{Goalkeeper:1,Defense:2,Midfield:3,Striker:1}, desc:'Possession — dominate the middle' },
+  { name:'4-1-1', fm:{Goalkeeper:1,Defense:4,Midfield:1,Striker:1}, desc:'Bunker — very defensive shape' },
+  { name:'1-3-2', fm:{Goalkeeper:1,Defense:1,Midfield:3,Striker:2}, desc:'Attack-heavy — push forward' },
+  { name:'2-1-3', fm:{Goalkeeper:1,Defense:2,Midfield:1,Striker:3}, desc:'All-out attack' },
+  { name:'1-2-3', fm:{Goalkeeper:1,Defense:1,Midfield:2,Striker:3}, desc:'Maximum pressure forward' },
+];
 
-  const posConfig = [
-    { key:'Goalkeeper', label:'GK',  cls:'lbl-gk'  },
-    { key:'Defense',    label:'DEF', cls:'lbl-def'  },
-    { key:'Midfield',   label:'MID', cls:'lbl-mid'  },
-    { key:'Striker',    label:'STR', cls:'lbl-str'  },
-  ];
-
-  document.getElementById('formationInputs').innerHTML = posConfig.map(({ key, label, cls }) =>
-    `<div class="formation-field">
-       <label class="${cls}">${label}</label>
-       <input type="number" min="0" max="9" value="${fm[key]}" oninput="updateFormation('${key}', this.value)">
-     </div>`
-  ).join('');
-
-  const totalEl = document.getElementById('formationTotal');
-  totalEl.textContent = `${total} / ${teamSize} on field`;
-  totalEl.className = 'formation-total ' + (valid ? 'valid' : 'invalid');
-
-  document.getElementById('formationError').textContent = valid
-    ? ''
-    : `Formation must total ${teamSize} players. Adjust counts above.`;
+function frow(n, cls) {
+  return `<div class="frow">${Array(n).fill(`<div class="fd ${cls}"></div>`).join('')}</div>`;
 }
 
-function updateFormation(key, val) {
-  if (!state.formation) state.formation = { ...FORMATION_DEFAULT };
-  state.formation[key] = parseInt(val, 10) || 0;
+function renderFormationSelector() {
+  const fm  = getFormation();
+  const cur = `${fm.Defense}-${fm.Midfield}-${fm.Striker}`;
+  document.getElementById('formationInputs').innerHTML = FORMATIONS.map(f => {
+    const key      = `${f.fm.Defense}-${f.fm.Midfield}-${f.fm.Striker}`;
+    const selected = key === cur;
+    const diagram  = [
+      frow(f.fm.Striker,  'fd-str'),
+      frow(f.fm.Midfield, 'fd-mid'),
+      frow(f.fm.Defense,  'fd-def'),
+      frow(1,             'fd-gk'),
+    ].join('');
+    return `<div class="formation-card${selected?' selected':''}" onclick="selectFormation('${f.name}')">
+      <div class="formation-card-name">${f.name}</div>
+      <div class="formation-diagram">${diagram}</div>
+      <div class="formation-card-desc">${f.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectFormation(name) {
+  const f = FORMATIONS.find(f => f.name === name);
+  if (!f) return;
+  state.formation = { ...f.fm };
+  state.teamSize  = 7;
   saveTeamState(currentTeam, state);
   renderFormationSelector();
+  renderShifts(); // refresh shift cards so validation errors update immediately
+  showToast(`Formation: ${name}`);
 }
 
 function renderRoster() {
@@ -1398,7 +1412,9 @@ function renderSessionBar() {
   const active   = getActiveSession();
   const locked   = active && active.locked;
   const nSh = active ? getNumShifts(active) : 6;
-  const shiftInfo = `<span style="font-size:0.7rem;color:var(--text2);white-space:nowrap">${nSh} shifts</span>`;
+  const fm  = getFormation();
+  const fmName = `${fm.Defense}-${fm.Midfield}-${fm.Striker}`;
+  const shiftInfo = `<span style="font-size:0.7rem;color:var(--text2);white-space:nowrap">${nSh} shifts · <span style="color:var(--green)">${fmName}</span></span>`;
 
   bar.innerHTML = `
     <select class="session-select" onchange="switchSession(this.value)">
