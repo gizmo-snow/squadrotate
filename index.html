@@ -233,6 +233,9 @@
   .week-body { padding: 9px 13px; display: grid; gap: 5px; }
   .week-row { display: grid; gap: 4px; font-size: 0.76rem; }
   .week-row .label { color: var(--green); font-weight: 600; font-size: 0.68rem; text-transform: uppercase; margin-bottom: 1px; }
+  .adjusted-plan { border-top: 1px solid rgba(234,179,8,0.3); background: rgba(234,179,8,0.05); padding: 9px 13px; display: grid; gap: 6px; }
+  .adjusted-plan-header { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--yellow); margin-bottom: 2px; }
+  .adjusted-plan .week-row .label { color: var(--yellow); }
 
   /* MODAL */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
@@ -1128,6 +1131,25 @@ function renderDailyRoutine() {
     </div>`;
 }
 
+// Returns null (no absent coaches), [] (all absent), or array of { coach, drills[] }
+function buildAdjustedPlan(week, avail) {
+  const present = week.stations.filter(st => avail[st.coach] !== false);
+  const absent  = week.stations.filter(st => avail[st.coach] === false);
+  if (!absent.length) return null;
+  if (!present.length) return [];
+  // Clone present stations into a plan
+  const plan = present.map(st => ({
+    coach: st.coach,
+    drills: st.drill ? [{ text: st.drill, from: null }] : []
+  }));
+  // Round-robin distribute absent coaches' drills to present coaches
+  absent.forEach((st, i) => {
+    if (!st.drill) return;
+    plan[i % plan.length].drills.push({ text: st.drill, from: st.coach });
+  });
+  return plan;
+}
+
 function renderPractice() {
   renderDailyRoutine();
   const agenda = state.weeklyAgenda || [];
@@ -1169,6 +1191,26 @@ function renderPractice() {
             </div>`;
           }).join('')}
         </div>
+        ${(() => {
+          const plan = buildAdjustedPlan(w, avail);
+          if (!plan) return '';
+          if (!plan.length) return `
+            <div class="adjusted-plan">
+              <div class="adjusted-plan-header">⚠ No coaches available today</div>
+            </div>`;
+          return `
+            <div class="adjusted-plan">
+              <div class="adjusted-plan-header">⚡ Run with ${plan.length} coach${plan.length > 1 ? 'es' : ''} today</div>
+              ${plan.map(p => `
+                <div class="week-row">
+                  <div class="label">${p.coach}</div>
+                  <div>${p.drills.map(d => d.from
+                    ? `${d.text} <span style="font-size:0.65rem;color:var(--yellow);font-style:italic">(covers ${d.from.split(' ')[0]})</span>`
+                    : (d.text || '—')
+                  ).join('<br>') || '—'}</div>
+                </div>`).join('')}
+            </div>`;
+        })()}
       </div>`;
     }).join('')}`;
 }
