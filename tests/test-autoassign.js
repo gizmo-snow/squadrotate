@@ -5,7 +5,7 @@ QUnit.module('autoAssignPure', () => {
   QUnit.test('all 7 players get a role in every shift (6 shifts)', assert => {
     const players = makeRoster().slice(0, 7);
     const state   = makeState({ players, absent: [] });
-    const session = makeSession({ halfLength:48, minsPerShift:8 }); // 6 shifts
+    const session = makeSession({ halfLength:24, minsPerShift:8 }); // 6 total shifts
     const shifts  = autoAssignPure(state, session);
     assert.equal(shifts.length, 6, '6 shifts generated');
     shifts.forEach((sd, s) => {
@@ -19,7 +19,7 @@ QUnit.module('autoAssignPure', () => {
     const players = makeRoster().slice(0, 8);
     const absentId = players[0].id;
     const state   = makeState({ players, absent: [absentId] });
-    const session = makeSession({ halfLength:48, minsPerShift:8 });
+    const session = makeSession({ halfLength:24, minsPerShift:8 });
     const shifts  = autoAssignPure(state, session);
     shifts.forEach((sd, s) => {
       assert.notOk(sd[absentId], `absent player not in shift ${s+1}`);
@@ -30,7 +30,7 @@ QUnit.module('autoAssignPure', () => {
     const players = makeRoster().slice(0, 7);
     const gkIds   = new Set(players.filter(p => p.positions.includes('Goalkeeper')).map(p => p.id));
     const state   = makeState({ players, absent: [] });
-    const session = makeSession({ halfLength:48, minsPerShift:8 });
+    const session = makeSession({ halfLength:24, minsPerShift:8 });
     const shifts  = autoAssignPure(state, session);
     shifts.forEach((sd, s) => {
       const gkPlayer = Object.entries(sd).find(([,r]) => r === 'Goalkeeper');
@@ -43,7 +43,7 @@ QUnit.module('autoAssignPure', () => {
   QUnit.test('no player is GK in two consecutive shifts', assert => {
     const players = makeRoster(); // 9 players, 2 have GK
     const state   = makeState({ players, absent: [] });
-    const session = makeSession({ halfLength:48, minsPerShift:8 });
+    const session = makeSession({ halfLength:24, minsPerShift:8 });
     const shifts  = autoAssignPure(state, session);
     for (let s = 1; s < shifts.length; s++) {
       const gkPrev = Object.entries(shifts[s-1]).find(([,r]) => r === 'Goalkeeper');
@@ -54,18 +54,18 @@ QUnit.module('autoAssignPure', () => {
     }
   });
 
-  QUnit.test('dynamic shift count respected (3 shifts)', assert => {
+  QUnit.test('dynamic shift count respected (4 shifts)', assert => {
     const players = makeRoster().slice(0, 7);
     const state   = makeState({ players, absent: [] });
-    const session = makeSession({ halfLength:24, minsPerShift:8 }); // 3 shifts
+    const session = makeSession({ halfLength:16, minsPerShift:8 }); // 2 per half × 2 = 4 shifts
     const shifts  = autoAssignPure(state, session);
-    assert.equal(shifts.length, 3, 'only 3 shifts generated');
+    assert.equal(shifts.length, 4, 'only 4 shifts generated');
   });
 
   QUnit.test('every shift has exactly one goalkeeper when possible', assert => {
     const players = makeRoster().slice(0, 7);
     const state   = makeState({ players, absent: [] });
-    const session = makeSession({ halfLength:48, minsPerShift:8 });
+    const session = makeSession({ halfLength:24, minsPerShift:8 });
     const shifts  = autoAssignPure(state, session);
     shifts.forEach((sd, s) => {
       const gkCount = Object.values(sd).filter(r => r === 'Goalkeeper').length;
@@ -78,7 +78,7 @@ QUnit.module('autoAssignPure', () => {
     // 2-2-2 formation instead of default 3-1-2
     const formation = { Goalkeeper:1, Defense:2, Midfield:2, Striker:2 };
     const state   = makeState({ players, absent: [], formation, teamSize:7 });
-    const session = makeSession({ halfLength:48, minsPerShift:8 });
+    const session = makeSession({ halfLength:24, minsPerShift:8 });
     const shifts  = autoAssignPure(state, session);
     // At minimum, no more DEF than 2 should appear (preference-based so exact counts vary)
     shifts.forEach((sd, s) => {

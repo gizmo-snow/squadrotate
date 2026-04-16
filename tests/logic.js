@@ -10,8 +10,9 @@ const FORMATION_DEFAULT = { Goalkeeper:1, Defense:3, Midfield:1, Striker:2 };
 // ── Shift count (issue #8) ────────────────────────────────────────────────────
 function getNumShifts(session) {
   if (!session) return 6;
-  const n = Math.floor(session.halfLength / session.minsPerShift);
-  return Math.max(1, n);
+  const perHalf = Math.floor(session.halfLength / session.minsPerShift);
+  const bonus   = (session.halfLength % session.minsPerShift) > 5 ? 1 : 0;
+  return Math.max(2, (perHalf + bonus) * 2); // × 2 for both halves
 }
 
 function getShiftRemainder(session) {
@@ -155,4 +156,25 @@ function autoAssignPure(state, session) {
   }
 
   return shifts;
+}
+
+// ── Adjusted practice plan (issue #28) ───────────────────────────────────────
+// week    = { stations: [{ coach, drill }] }
+// avail   = { [coachName]: boolean }  (false = absent, missing/true = present)
+// Returns null if no one is absent, [] if everyone is absent,
+// or an array of { coach, drills: [{text, from}] } for present coaches.
+function buildAdjustedPlan(week, avail) {
+  const present = week.stations.filter(st => avail[st.coach] !== false);
+  const absent  = week.stations.filter(st => avail[st.coach] === false);
+  if (!absent.length) return null;
+  if (!present.length) return [];
+  const plan = present.map(st => ({
+    coach: st.coach,
+    drills: st.drill ? [{ text: st.drill, from: null }] : []
+  }));
+  absent.forEach((st, i) => {
+    if (!st.drill) return;
+    plan[i % plan.length].drills.push({ text: st.drill, from: st.coach });
+  });
+  return plan;
 }

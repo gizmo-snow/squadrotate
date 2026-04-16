@@ -1,0 +1,10 @@
+{
+  "name": "squadrotate",
+  "private": true,
+  "scripts": {
+    "test": "qunit --require ./tests/bootstrap.cjs tests/test-*.js"
+  },
+  "devDependencies": {
+    "qunit": "^2.21.0"
+  }
+}
