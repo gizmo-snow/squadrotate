@@ -1,0 +1,31 @@
+name: Sync .gizmobuild context to Google Drive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.gizmobuild/**'
+      - 'README.md'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+
+      - name: Sync context files to Drive
+        env:
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          REPO_NAME: ${{ github.repository }}
+        run: python .gizmobuild/scripts/sync_to_drive.py
