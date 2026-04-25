@@ -96,8 +96,27 @@ function rankSwapCandidates(shiftData, targetPlayerId, newRole, players, session
   return candidates.sort((a, b) => b.score - a.score);
 }
 
+// ── positionShiftsPlayed / shiftsPlayedPure ───────────────────────────────────
+// Pure helpers used by autoAssignPure (mirrors index.html implementation)
+function positionShiftsPlayed(shifts, playerId, role, beforeShift) {
+  let n = 0;
+  for (let s = 0; s < beforeShift; s++) {
+    if ((shifts[s] || {})[playerId] === role) n++;
+  }
+  return n;
+}
+
+function shiftsPlayedPure(shifts, playerId, beforeShift) {
+  let n = 0;
+  for (let s = 0; s < beforeShift; s++) {
+    const r = shifts[s] && shifts[s][playerId];
+    if (r && r !== 'Bench') n++;
+  }
+  return n;
+}
+
 // ── Auto-assign (core algorithm) ──────────────────────────────────────────────
-// Pure version: takes state + session, returns filled shifts array
+// Pure version matching index.html autoAssign exactly (deterministic — no Math.random)
 function autoAssignPure(state, session) {
   const numShifts = getNumShifts(session);
   const formation = getFormation(state);
@@ -108,51 +127,55 @@ function autoAssignPure(state, session) {
   const goalieCount = {};
   present.forEach(p => { goalieCount[p.id] = 0; });
 
-  function shiftsPlayed(playerId, beforeShift) {
-    let count = 0;
-    for (let i = 0; i < beforeShift; i++) {
-      if (shifts[i][playerId] && shifts[i][playerId] !== 'Bench') count++;
-    }
-    return count;
-  }
-
   for (let s = 0; s < numShifts; s++) {
-    let pool = [...present];
+    const assigned = {};
+    const pool = [...present];
+    const quota = { ...formation };
 
-    // Step 1 — Goalkeeper
-    const goalieCandidates = pool
-      .filter(p => p.positions.includes('Goalkeeper'))
-      .sort((a, b) => goalieCount[a.id] - goalieCount[b.id]);
-    if (goalieCandidates.length) {
-      const gk = goalieCandidates[0];
-      shifts[s][gk.id] = 'Goalkeeper';
+    // Step 1 — Goalkeeper: rotate, fewest GK shifts first
+    const gkOk = pool.filter(p => p.positions.includes('Goalkeeper'));
+    if (gkOk.length) {
+      gkOk.sort((a, b) => goalieCount[a.id] - goalieCount[b.id]);
+      const gk = gkOk[0];
+      assigned[gk.id] = 'Goalkeeper';
       goalieCount[gk.id]++;
-      pool = pool.filter(p => p.id !== gk.id);
+      pool.splice(pool.indexOf(gk), 1);
+      quota.Goalkeeper--;
     }
 
-    // Step 2 — Fill by position preference
-    ['Defense', 'Midfield', 'Striker'].forEach(pos => {
-      const quota = formation[pos] || 0;
-      const candidates = pool
-        .filter(p => p.positions.includes(pos))
-        .sort((a, b) =>
-          (shiftsPlayed(a.id, s) - shiftsPlayed(b.id, s)) ||
-          (b.power - a.power)
-        );
-      const fill = candidates.slice(0, quota);
-      fill.forEach(p => {
-        shifts[s][p.id] = pos;
-        pool = pool.filter(x => x.id !== p.id);
-      });
-    });
+    // Step 2 — Fill DEF/MID/STR by preference: fewest position-shifts first, then total, then power
+    for (const role of ['Defense', 'Midfield', 'Striker']) {
+      let slots = quota[role];
+      const cands = pool.filter(p => !assigned[p.id] && p.positions.includes(role));
+      cands.sort((a, b) =>
+        positionShiftsPlayed(shifts, a.id, role, s) - positionShiftsPlayed(shifts, b.id, role, s) ||
+        shiftsPlayedPure(shifts, a.id, s) - shiftsPlayedPure(shifts, b.id, s) ||
+        b.power - a.power
+      );
+      for (let i = 0; i < cands.length && slots > 0; i++) {
+        const p = cands[i];
+        assigned[p.id] = role;
+        pool.splice(pool.indexOf(p), 1);
+        slots--;
+      }
+      quota[role] = slots;
+    }
 
-    // Step 3 — Bench remaining
-    pool.forEach(p => { shifts[s][p.id] = 'Bench'; });
+    // Step 3 — Fill leftover slots with remaining players
+    const openRoles = Object.entries(quota).filter(([, c]) => c > 0);
+    for (const p of [...pool]) {
+      if (openRoles.length > 0) {
+        assigned[p.id] = openRoles[0][0];
+        openRoles[0][1]--;
+        if (openRoles[0][1] <= 0) openRoles.shift();
+      } else {
+        assigned[p.id] = 'Bench';
+      }
+    }
 
-    // Ensure every present player has a role
-    present.forEach(p => {
-      if (!shifts[s][p.id]) shifts[s][p.id] = 'Bench';
-    });
+    // Ensure all present players have a role
+    present.forEach(p => { if (!assigned[p.id]) assigned[p.id] = 'Bench'; });
+    shifts[s] = assigned;
   }
 
   return shifts;
@@ -178,3 +201,66 @@ function buildAdjustedPlan(week, avail) {
   });
   return plan;
 }
+
+// ── State migration (pure) ────────────────────────────────────────────────────
+// Mirrors the migration logic in getTeamState from index.html.
+// Takes a raw parsed state object and the team definition; returns a migrated copy.
+const DEFAULT_DAILY_ROUTINE = [
+  { time:'00–10m', activity:'Warm-up & Footwork',  focus:'Dynamic running + Training ladder for agility.' },
+  { time:'10–20m', activity:'Strategy Session',    focus:'Magnet board talk: Position names and daily goal.' },
+  { time:'20–50m', activity:'Technical Drills',    focus:'Small group rotations (Coaches lead specific stations).' },
+  { time:'50–90m', activity:'Game Play',           focus:'Scrimmage with "Freeze-Frame" coaching moments.' },
+];
+const DEFAULT_COACHES_TEMPLATE = [ {id:1, name:'Head Coach', role:'Head Coach'} ];
+
+function migrateTeamState(parsed, def) {
+  const p = { ...parsed };
+  if (!p.weeklyAgenda) p.weeklyAgenda = JSON.parse(JSON.stringify(def.weeklyAgenda || []));
+  if (!p.formation)    p.formation    = { ...FORMATION_DEFAULT };
+  if (!p.teamSize)     p.teamSize     = 7;
+  if (!p.nextId) {
+    p.nextId = Array.isArray(p.players) ? Math.max(...p.players.map(x => x.id || 0), 0) + 1 : 1;
+  }
+  if (!Array.isArray(p.players)) p.players = JSON.parse(JSON.stringify(def.defaultPlayers || []));
+  if (!Array.isArray(p.shifts))  p.shifts  = [];
+  if (!Array.isArray(p.absent))  p.absent  = [];
+  p.players.forEach(pl => { if (!Array.isArray(pl.positions)) pl.positions = []; });
+  if (!p.dailyRoutine) p.dailyRoutine = JSON.parse(JSON.stringify(DEFAULT_DAILY_ROUTINE));
+  if (!p.coaches)      p.coaches      = JSON.parse(JSON.stringify(def.coaches || DEFAULT_COACHES_TEMPLATE));
+  if (!p.nextCoachId)  p.nextCoachId  = (p.coaches ? Math.max(...p.coaches.map(c => c.id||0), 0) + 1 : 1);
+  return p;
+}
+
+// ── Session store helpers (pure) ──────────────────────────────────────────────
+function makeSessionsStore(session) {
+  return { activeSessionId: session.id, sessions: [session] };
+}
+
+function getActiveSessionPure(store) {
+  if (!store || !store.sessions.length) return null;
+  return store.sessions.find(s => s.id === store.activeSessionId) || store.sessions[0];
+}
+
+function switchSessionPure(sessStore, newSessionId) {
+  return { ...sessStore, activeSessionId: newSessionId };
+}
+
+// ── Player management (pure) ──────────────────────────────────────────────────
+function addPlayerPure(players, nextId, { name, power, positions, kit='', notes='' }) {
+  const expMap = {1:'Little experience', 2:'Some experience', 3:'Very experienced'};
+  return {
+    players: [...players, { id: nextId, name, power, kit, notes, positions, experience: expMap[power] }],
+    nextId: nextId + 1
+  };
+}
+
+function editPlayerPure(players, id, updates) {
+  return players.map(p => p.id === id ? { ...p, ...updates } : p);
+}
+
+function deletePlayerPure(players, id) {
+  return players.filter(p => p.id !== id);
+}
+
+// ── computeShiftDiff (existing, kept in sync) ────────────────────────────────
+// Already defined above — no changes needed.

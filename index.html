@@ -6,6 +6,19 @@
 <title>SquadRotate</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%230f172a' stroke='%2322c55e' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='16' r='5.5' fill='%23f1f5f9'/%3E%3Cpolygon points='16,10.5 17.6,15.2 22.5,15.2 18.5,18.1 20.1,22.8 16,19.9 11.9,22.8 13.5,18.1 9.5,15.2 14.4,15.2' fill='%230f172a'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// PostHog analytics — replace empty string with your PostHog project API key to enable tracking.
+// Get the key from posthog.com → Project Settings → Project API Key.
+const _PH_KEY = '';
+(function() {
+  if (!_PH_KEY) return;
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","cdn.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+" (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init(_PH_KEY, { api_host: 'https://us.i.posthog.com', person_profiles: 'identified_only' });
+})();
+function phTrack(event, props) {
+  try { if (typeof posthog !== 'undefined' && posthog.capture) posthog.capture(event, props || {}); } catch(_) {}
+}
+</script>
 <style>
   :root {
     --green: #22c55e;
@@ -260,31 +273,46 @@
   @media (min-width: 540px)  { .shift-body { grid-template-columns: repeat(3, 1fr); } .roster-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (min-width: 900px)  { .roster-grid { grid-template-columns: repeat(3, 1fr); } .view { max-width: 960px; margin: 0 auto; } }
 
-  #trial-gate {
+  #auth-screen {
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
     display: flex; align-items: center; justify-content: center;
     padding: 2rem;
   }
-  #trial-gate .gate-card {
+  #auth-screen .gate-card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
     padding: 2.5rem; max-width: 420px; width: 100%; text-align: center;
   }
-  #trial-gate h1 { font-size: 1.4rem; font-weight: 800; color: var(--text); margin: 0.75rem 0; }
-  #trial-gate p  { color: var(--text2); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.75rem; }
-  #trial-gate .gate-cta {
-    display: inline-block; background: var(--green); color: #0f172a;
-    font-weight: 700; padding: 0.65rem 1.5rem; border-radius: 8px;
-    text-decoration: none; font-size: 0.9rem;
+  #auth-screen h1 { font-size: 1.4rem; font-weight: 800; color: var(--text); margin: 0.75rem 0; }
+  #auth-screen p  { color: var(--text2); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem; }
+  #auth-email {
+    width: 100%; padding: 0.65rem 0.9rem; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 0.95rem; box-sizing: border-box; margin-bottom: 0.75rem;
   }
+  #auth-submit {
+    width: 100%; background: var(--green); color: #0f172a;
+    font-weight: 700; padding: 0.65rem 1.5rem; border-radius: 8px;
+    border: none; font-size: 0.9rem; cursor: pointer;
+  }
+  #auth-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  #logout-btn { font-size: 0.75rem; color: var(--text2); background: none; border: none; cursor: pointer; padding: 0 4px; }
+  #logout-btn:hover { color: var(--text); }
 </style>
 </head>
 <body>
 
-<div id="trial-gate">
-  <div style="text-align:center">
-    <div style="font-size:2rem;margin-bottom:0.75rem">⚽</div>
-    <div style="color:var(--text2);font-size:0.9rem">Loading…</div>
+<div id="auth-screen">
+  <div class="gate-card">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem">⚽</div>
+    <h1>SquadRotate</h1>
+    <p id="auth-msg">Checking session…</p>
+    <div id="auth-form" style="display:none">
+      <form onsubmit="sendMagicLink(); return false;">
+        <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
+        <button id="auth-submit" type="submit">Send Magic Link</button>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -293,6 +321,7 @@
     <div class="logo">⚽ SquadRotate</div>
     <div style="display:flex;align-items:center;gap:8px;">
       <a class="help-link" href="help/" title="How to use SquadRotate">Help?</a>
+      <button id="logout-btn" onclick="handleLogout()" style="display:none">Sign out</button>
       <span class="session-label" id="sessionLabel">vs. Opponent · Date</span>
     </div>
   </div>
@@ -480,58 +509,72 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── TRIAL GATE ──────────────────────────────────────────────────────────────
+// ─── SUPABASE AUTH ────────────────────────────────────────────────────────────
 const _SB_URL = 'https://spkxzwbijgwdlzbhecwu.supabase.co';
 const _SB_KEY = 'sb_publishable_MBSJhJqoVCuRwaiaHrgMFw_tC7c2G1Y';
-const _SESSION_KEY = 'sq_session';
+// PKCE flow: magic links carry a code instead of a bare token. The browser
+// holds a code verifier in localStorage that email security scanners don't
+// have, so pre-fetched links can't be consumed before the user clicks them.
+const sb = window.supabase.createClient(_SB_URL, _SB_KEY, {
+  auth: { flowType: 'pkce' }
+});
 
-function _getSession() {
-  try {
-    const raw = localStorage.getItem(_SESSION_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw);
-    if (new Date(s.expiresAt) < new Date()) { localStorage.removeItem(_SESSION_KEY); return null; }
-    return s;
-  } catch { return null; }
+async function sendMagicLink() {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) { document.getElementById('auth-msg').textContent = 'Enter your email address.'; return; }
+  phTrack('magic_link_requested', { email_domain: email.split('@')[1] || 'unknown' });
+  const btn = document.getElementById('auth-submit');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  const redirectTo = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/';
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo }
+  });
+  if (error) {
+    phTrack('magic_link_send_failed', { error: error.message });
+    document.getElementById('auth-msg').textContent = 'Error: ' + error.message;
+    btn.disabled = false; btn.textContent = 'Send Magic Link';
+  } else {
+    phTrack('magic_link_sent');
+    document.getElementById('auth-msg').textContent = 'Check your email for a magic link ✓';
+    document.getElementById('auth-form').style.display = 'none';
+  }
 }
 
-function _showGateError(type) {
-  const isExpired = type === 'expired';
-  document.getElementById('trial-gate').innerHTML = `
-    <div class="gate-card">
-      <div style="font-size:2.5rem">⚽</div>
-      <h1>${isExpired ? 'Your trial has ended' : 'Access link invalid'}</h1>
-      <p>${isExpired
-        ? 'Your 60-day trial has ended. Upgrade to keep your lineups and game history.'
-        : "This access link isn't valid or has already been used. Check your email for your original invitation."
-      }</p>
-      <a class="gate-cta" href="https://squadrotate.com">Back to squadrotate.com</a>
-    </div>
-  `;
+function showAuthScreen() {
+  const el = document.getElementById('auth-screen');
+  if (el) el.style.display = 'flex';
+  else document.body.insertAdjacentHTML('afterbegin', `
+    <div id="auth-screen" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:2rem">
+      <div class="gate-card">
+        <div style="font-size:2.5rem;margin-bottom:0.5rem">⚽</div>
+        <h1>SquadRotate</h1>
+        <p id="auth-msg">Enter your email to sign in.</p>
+        <div id="auth-form">
+          <form onsubmit="sendMagicLink(); return false;">
+            <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
+            <button id="auth-submit" type="submit">Send Magic Link</button>
+          </form>
+        </div>
+      </div>
+    </div>`);
+  document.getElementById('auth-msg').textContent = 'Enter your email to sign in.';
+  document.getElementById('auth-form').style.display = 'block';
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = 'none';
 }
 
-(async function checkTrialAccess() {
-  const trialToken = new URLSearchParams(window.location.search).get('trial');
+function hideAuthScreen() {
+  const el = document.getElementById('auth-screen');
+  if (el) el.remove();
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = 'inline';
+}
 
-  if (trialToken) {
-    const _sb = supabase.createClient(_SB_URL, _SB_KEY);
-    const { data, error } = await _sb.rpc('activate_trial_token', { p_token: trialToken });
-    if (error || !data || data.error) {
-      _showGateError(data?.error === 'expired' ? 'expired' : 'invalid');
-      return;
-    }
-    localStorage.setItem(_SESSION_KEY, JSON.stringify({ email: data.email, expiresAt: data.expires_at }));
-    window.history.replaceState({}, '', window.location.pathname);
-  }
-
-  if (!_getSession()) {
-    _showGateError('invalid');
-    return;
-  }
-
-  // Valid session: lift the gate
-  document.getElementById('trial-gate').remove();
-})();
+async function handleLogout() {
+  saveTeamState(currentTeam, state);
+  await sb.auth.signOut();
+}
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const ROLES      = ['Goalkeeper','Defense','Midfield','Striker','Bench'];
@@ -540,8 +583,8 @@ const ROLE_CLASS = { Goalkeeper:'role-gk', Defense:'role-def', Midfield:'role-mi
 const POS_CLASS  = { Goalkeeper:'pos-gk', Defense:'pos-def', Midfield:'pos-mid', Striker:'pos-str' };
 const FORMATION_DEFAULT = { Goalkeeper:1, Defense:3, Midfield:1, Striker:2 }; // 3-1-2 / 7v7
 const DEFAULT_COACHES = {
-  u78:  [ {id:1, name:'Brennan', role:'Head Coach'}, {id:2, name:'Coach Keenan', role:'Assistant Coach'}, {id:3, name:'Coach Gary', role:'Volunteer'} ],
-  u912: [ {id:1, name:'Brennan', role:'Head Coach'}, {id:2, name:'Ignatius', role:'Assistant Coach'} ],
+  u78:  [ {id:1, name:'Head Coach', role:'Head Coach'} ],
+  u912: [ {id:1, name:'Head Coach', role:'Head Coach'} ],
 };
 const DEFAULT_DAILY_ROUTINE = [
   { time:'00–10m', activity:'Warm-up & Footwork',  focus:'Dynamic running + Training ladder for agility.' },
@@ -580,20 +623,7 @@ const TEAMS = {
   u78: {
     label: 'U7–U8 Navy Blue',
     storageKey: 'squadrotate_u78_v1',
-    defaultPlayers: [
-      { id:1,  name:'Alex Griffin',     power:2, experience:'Some experience',   positions:['Midfield','Goalkeeper','Defense'], kit:'' },
-      { id:2,  name:'Alexander Kinsey', power:2, experience:'Some experience',   positions:['Defense','Striker'],               kit:'' },
-      { id:3,  name:'Chase Brown',      power:2, experience:'Some experience',   positions:['Midfield','Striker'],              kit:'' },
-      { id:4,  name:'Imani Uwayzor',    power:2, experience:'Some experience',   positions:['Midfield','Striker','Defense'],    kit:'' },
-      { id:5,  name:'Isaac Roemer',     power:3, experience:'Very experienced',  positions:['Midfield','Striker','Defense','Goalkeeper'], kit:'' },
-      { id:6,  name:'Lucy Snow',        power:2, experience:'Some experience',   positions:['Striker','Defense'],               kit:'' },
-      { id:7,  name:'Neema Uwayzor',    power:2, experience:'Some experience',   positions:['Defense','Striker'],               kit:'' },
-      { id:8,  name:'Nia Dzelalic',     power:3, experience:'Very experienced',  positions:['Striker','Midfield'],              kit:'' },
-      { id:9,  name:'Winston St. Vil',  power:2, experience:'Some experience',   positions:['Striker','Defense','Goalkeeper'],  kit:'' },
-      { id:10, name:'Zeke Kienstra',    power:1, experience:'Little experience', positions:['Striker','Defense'],               kit:'' },
-      { id:11, name:'Zeyn Dzelalic',    power:2, experience:'Some experience',   positions:['Striker','Defense'],               kit:'' },
-      { id:12, name:'Zoe Cusumano',     power:2, experience:'Some experience',   positions:['Defense','Striker'],               kit:'' },
-    ],
+    defaultPlayers: [],
     weeklyAgenda: [
       { dates:'TBD', strategy:'The 3-1-2 Shape: Show the "Base" of 3.',
         stations:[
@@ -648,19 +678,7 @@ const TEAMS = {
   u912: {
     label: 'U9–U12',
     storageKey: 'squadrotate_u912_v1',
-    defaultPlayers: [
-      { id:1,  name:'Adrian Murphy',    power:1, experience:'Little experience', positions:['Striker','Defense'],              kit:'' },
-      { id:2,  name:'Fossouo Mokom',    power:2, experience:'Some experience',   positions:['Defense','Midfield','Striker'],   kit:'' },
-      { id:3,  name:'Genevieve Kruder', power:3, experience:'Very experienced',  positions:['Midfield','Defense'],             kit:'' },
-      { id:4,  name:'Jay Wellbock',     power:2, experience:'Some experience',   positions:['Midfield','Striker'],             kit:'' },
-      { id:5,  name:'Jonah Galvez',     power:2, experience:'Some experience',   positions:['Striker','Defense','Goalkeeper'], kit:'' },
-      { id:6,  name:'Mary Snow',        power:2, experience:'Some experience',   positions:['Defense','Striker'],              kit:'' },
-      { id:7,  name:'Mateo Gurrero',    power:3, experience:'Very experienced',  positions:['Midfield','Striker'],             kit:'' },
-      { id:8,  name:'Nolan Wargo',      power:2, experience:'Some experience',   positions:['Defense','Goalkeeper'],           kit:'' },
-      { id:9,  name:'Reece Myers',      power:2, experience:'Some experience',   positions:['Defense','Goalkeeper'],           kit:'' },
-      { id:10, name:'Skye Matthews',    power:1, experience:'Little experience', positions:['Striker','Defense'],              kit:'' },
-      { id:11, name:'Trent Marshall',   power:3, experience:'Very experienced',  positions:['Striker'],                        kit:'' },
-    ],
+    defaultPlayers: [],
     weeklyAgenda: [
       { dates:'4/16 & 4/23', strategy:'Match Readiness: Ref signals and field talk.',
         stations:[
@@ -692,7 +710,7 @@ const TEAMS = {
 };
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
-let currentTeam = localStorage.getItem('squadrotate_activeTeam') || 'u78';
+let currentTeam = 'u78';
 
 function getTeamState(teamKey) {
   const def = TEAMS[teamKey];
@@ -738,9 +756,30 @@ function getTeamState(teamKey) {
 
 function saveTeamState(teamKey, state) {
   localStorage.setItem(TEAMS[teamKey].storageKey, JSON.stringify(state));
+  syncTeamToCloud(teamKey, state);
 }
 
-let state = getTeamState(currentTeam);
+async function syncTeamToCloud(teamKey, teamState) {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  await sb.from('user_teams').upsert(
+    { user_id: user.id, team_key: teamKey, data: teamState, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,team_key' }
+  );
+}
+
+async function loadFromCloud(teamKey) {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data } = await sb.from('user_teams')
+    .select('data')
+    .eq('user_id', user.id)
+    .eq('team_key', teamKey)
+    .single();
+  return data ? data.data : null;
+}
+
+let state = {};
 
 // ─── TEAM SWITCHING ──────────────────────────────────────────────────────────
 function switchTeam(teamKey) {
@@ -1978,20 +2017,73 @@ document.getElementById('coachModal').addEventListener('click', function(e) {
 });
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
-// Migrate both teams to sessions store on startup
-ensureSessionsExist('u78');
-ensureSessionsExist('u912');
-
-// Wire up New Game modal live preview
+// Wire modal close-on-backdrop (safe to attach before auth resolves)
 ['ngHalf','ngMins'].forEach(id => {
   document.getElementById(id).addEventListener('input', updateNewGamePreview);
 });
 
-updateTeamUI();
-// Load the active session's shifts on startup (avoids showing stale main-key data)
-const _initSess = getActiveSession();
-if (_initSess) loadSessionShifts(_initSess.id);
-renderAll();
+let _appStarted = false;
+
+async function initApp() {
+  if (_appStarted) return;
+  _appStarted = true;
+
+  // Load cloud data into localStorage; migrate local-only data up to cloud
+  for (const teamKey of ['u78', 'u912']) {
+    const cloudData = await loadFromCloud(teamKey);
+    if (cloudData) {
+      localStorage.setItem(TEAMS[teamKey].storageKey, JSON.stringify(cloudData));
+    } else {
+      const localRaw = localStorage.getItem(TEAMS[teamKey].storageKey);
+      if (localRaw) syncTeamToCloud(teamKey, JSON.parse(localRaw));
+    }
+  }
+
+  currentTeam = localStorage.getItem('squadrotate_activeTeam') || 'u78';
+  state = getTeamState(currentTeam);
+  ensureSessionsExist('u78');
+  ensureSessionsExist('u912');
+  hideAuthScreen();
+  updateTeamUI();
+  const _initSess = getActiveSession();
+  if (_initSess) loadSessionShifts(_initSess.id);
+  renderAll();
+}
+
+// Parses URL hash/query for Supabase auth errors (expired link, already used, etc.)
+function getUrlAuthError() {
+  const hash = new URLSearchParams(window.location.hash.replace('#', ''));
+  const query = new URLSearchParams(window.location.search);
+  const src = hash.get('error') ? hash : query;
+  if (!src.get('error')) return null;
+  return { error: src.get('error'), code: src.get('error_code'), description: src.get('error_description') };
+}
+
+sb.auth.onAuthStateChange((event, session) => {
+  if (session && !_appStarted) {
+    phTrack('auth_success');
+    initApp();
+  } else if (event === 'SIGNED_OUT') {
+    _appStarted = false;
+    showAuthScreen();
+  } else if (event === 'INITIAL_SESSION' && !session) {
+    const urlError = getUrlAuthError();
+    if (urlError) {
+      phTrack('auth_link_invalid', { error_code: urlError.code, error: urlError.error });
+      // Clean the error params from the URL so a reload doesn't re-trigger this
+      history.replaceState(null, '', window.location.pathname);
+      const msgEl = document.getElementById('auth-msg');
+      // Give users a clear recovery path: enter (or re-enter) their email to get a fresh link.
+      // Same email → signs them back into their existing account and data.
+      // Different email → creates a new account (fresh start, no data).
+      msgEl.innerHTML = '<span style="color:var(--red);font-weight:600">This link has expired or was already used.</span><br><span style="font-size:0.85em;color:var(--text2)">Enter your email below to get a new link. Use the same email to recover your data.</span>';
+      document.getElementById('auth-form').style.display = 'block';
+    } else {
+      document.getElementById('auth-msg').textContent = 'Enter your email to sign in.';
+      document.getElementById('auth-form').style.display = 'block';
+    }
+  }
+});
 </script>
 </body>
 </html>

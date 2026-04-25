@@ -39,31 +39,31 @@
   .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 28px; }
   .toc h2 { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); margin-bottom: 10px; }
   .toc ol { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
-  .toc a { color: var(--green); font-size: 0.85rem; text-decoration: none; }
+  .toc a { color: var(--green); font-size: 0.9rem; text-decoration: none; display: block; padding: 3px 0; }
   .toc a:hover { text-decoration: underline; }
 
   /* SECTION */
   .section { margin-bottom: 36px; scroll-margin-top: 64px; }
   .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
   .section-icon { font-size: 1.2rem; }
-  .section-header h2 { font-size: 1.05rem; font-weight: 700; }
+  .section-header h2 { font-size: 1.1rem; font-weight: 700; }
 
   /* SUBSECTION */
   .subsection { margin-bottom: 20px; }
-  .subsection h3 { font-size: 0.85rem; font-weight: 700; color: var(--green); margin-bottom: 8px; }
-  p { font-size: 0.88rem; color: var(--text); margin-bottom: 8px; }
+  .subsection h3 { font-size: 0.92rem; font-weight: 700; color: var(--green); margin-bottom: 9px; }
+  p { font-size: 0.95rem; color: var(--text); margin-bottom: 10px; line-height: 1.65; }
   p:last-child { margin-bottom: 0; }
 
   /* LISTS */
-  ul, ol { padding-left: 20px; display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
-  li { font-size: 0.86rem; color: var(--text); }
+  ul, ol { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  li { font-size: 0.92rem; color: var(--text); line-height: 1.55; }
   li strong { color: var(--text); }
 
   /* CALLOUT BOXES */
-  .callout { border-radius: 8px; padding: 11px 14px; margin: 10px 0; font-size: 0.84rem; display: flex; gap: 10px; align-items: flex-start; }
-  .callout-icon { flex-shrink: 0; font-size: 1rem; margin-top: 1px; }
+  .callout { border-radius: 8px; padding: 13px 15px; margin: 12px 0; font-size: 0.9rem; display: flex; gap: 10px; align-items: flex-start; }
+  .callout-icon { flex-shrink: 0; font-size: 1rem; margin-top: 2px; }
   .callout-body { flex: 1; }
-  .callout-body p { font-size: 0.84rem; }
+  .callout-body p { font-size: 0.9rem; }
   .callout.tip   { background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.25); }
   .callout.warn  { background: rgba(234,179,8,0.08);  border: 1px solid rgba(234,179,8,0.25); }
   .callout.info  { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); }
@@ -87,14 +87,14 @@
   .tl-red    { background: var(--red);   box-shadow: 0 0 5px var(--red); }
 
   /* FORMULA BOX */
-  .formula { background: var(--surface2); border-radius: 8px; padding: 12px 14px; font-size: 0.82rem; color: var(--text2); font-family: 'Courier New', monospace; line-height: 1.8; margin: 10px 0; border: 1px solid var(--border); }
+  .formula { background: var(--surface2); border-radius: 8px; padding: 13px 15px; font-size: 0.86rem; color: var(--text2); font-family: 'Courier New', monospace; line-height: 1.8; margin: 12px 0; border: 1px solid var(--border); }
   .formula strong { color: var(--text); }
 
   /* MATRIX DEMO */
-  .demo-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); margin: 10px 0; }
-  .demo-table th { padding: 6px 10px; background: var(--surface2); color: var(--text2); font-weight: 500; text-align: center; border-bottom: 1px solid var(--border); }
+  .demo-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--border); margin: 12px 0; }
+  .demo-table th { padding: 7px 10px; background: var(--surface2); color: var(--text2); font-weight: 500; text-align: center; border-bottom: 1px solid var(--border); }
   .demo-table th:first-child { text-align: left; }
-  .demo-table td { padding: 5px 10px; text-align: center; border-bottom: 1px solid rgba(71,85,105,0.3); }
+  .demo-table td { padding: 6px 10px; text-align: center; border-bottom: 1px solid rgba(71,85,105,0.3); }
   .demo-table td:first-child { text-align: left; font-weight: 500; }
   .demo-table tr:last-child td { border-bottom: none; }
   .mc-0    { color: var(--text2); }
