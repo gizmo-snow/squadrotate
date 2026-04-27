@@ -2059,6 +2059,69 @@ function getUrlAuthError() {
   return { error: src.get('error'), code: src.get('error_code'), description: src.get('error_description') };
 }
 
+// ─── PREFETCH-RESISTANT MAGIC-LINK CONFIRMATION (GIZ-165) ────────────────────
+// Bug: email-client prefetchers (Apple Mail iOS, Outlook, Gmail's scanners)
+// auto-fetch links in incoming emails to scan for malware. When the magic link
+// pointed to Supabase /verify directly, that auto-fetch consumed the OTP token.
+// User's actual click then hit "One-time token not found" → "Access link invalid".
+//
+// PKCE (already enabled above) protects session security but does NOT prevent
+// the OTP token from being marked used by the prefetcher's GET to /verify.
+//
+// Fix: Supabase email template now points to {SiteURL}?token_hash=...&type=...
+// instead of {ConfirmationURL}. The handler below shows a "Sign in" button
+// when those params are present. Token is only consumed on click → email
+// scanners don't trigger button clicks → token survives prefetch.
+function handleMagicLinkConfirmation() {
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get('token_hash');
+  const type = params.get('type');
+  if (!tokenHash || !type) return false;
+
+  const screen = document.getElementById('auth-screen');
+  if (!screen) return false;
+  screen.style.display = 'flex';
+
+  const msgEl = document.getElementById('auth-msg');
+  msgEl.textContent = 'Welcome back. Click below to sign in.';
+  document.getElementById('auth-form').style.display = 'none';
+
+  const card = screen.querySelector('.gate-card');
+  // Defensive: remove any pre-existing button so we don't double-render
+  const existingBtn = card.querySelector('#auth-confirm-btn');
+  if (existingBtn) existingBtn.remove();
+
+  const btn = document.createElement('button');
+  btn.id = 'auth-confirm-btn';
+  btn.type = 'button';
+  btn.textContent = 'Sign in to SquadRotate';
+  btn.style.cssText = 'margin-top:1rem;padding:0.75rem 1.5rem;background:var(--green);color:var(--bg);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:1rem';
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    phTrack('magic_link_confirm_clicked');
+    const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
+    if (error) {
+      phTrack('magic_link_confirm_failed', { error: error.message });
+      // Clean URL so a reload doesn't retry the dead token
+      history.replaceState(null, '', window.location.pathname);
+      btn.remove();
+      msgEl.innerHTML = '<span style="color:var(--red);font-weight:600">This link has expired or was already used.</span><br><span style="font-size:0.85em;color:var(--text2)">Enter your email below to get a new link. Use the same email to recover your data.</span>';
+      document.getElementById('auth-form').style.display = 'block';
+    } else {
+      phTrack('magic_link_confirm_success');
+      // Session is now set in supabase client storage.
+      // onAuthStateChange below will fire SIGNED_IN and call initApp().
+      history.replaceState(null, '', window.location.pathname);
+    }
+  });
+  card.appendChild(btn);
+  return true;
+}
+
+// Run BEFORE onAuthStateChange so we can intercept token_hash params on initial load
+const _hadTokenInUrl = handleMagicLinkConfirmation();
+
 sb.auth.onAuthStateChange((event, session) => {
   if (session && !_appStarted) {
     phTrack('auth_success');
@@ -2067,6 +2130,11 @@ sb.auth.onAuthStateChange((event, session) => {
     _appStarted = false;
     showAuthScreen();
   } else if (event === 'INITIAL_SESSION' && !session) {
+    if (_hadTokenInUrl) {
+      // The confirmation handler already set up the "Click to sign in" UI.
+      // Don't show the email form on top of it.
+      return;
+    }
     const urlError = getUrlAuthError();
     if (urlError) {
       phTrack('auth_link_invalid', { error_code: urlError.code, error: urlError.error });
